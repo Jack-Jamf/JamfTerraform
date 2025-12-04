@@ -1,0 +1,58 @@
+{
+  "modules": [
+    {
+      "id": "policy-chrome",
+      "title": "Install Google Chrome",
+      "description": "Create a policy to deploy Google Chrome to all managed computers",
+      "category": "Policies",
+      "icon": "🌐",
+      "tags": ["software", "deployment"],
+      "prompt": "Create a Jamf policy to install Google Chrome on all computers"
+    },
+    {
+      "id": "smart-group-os",
+      "title": "macOS Version Smart Group",
+      "description": "Smart group targeting computers running specific macOS versions",
+      "category": "Smart Groups",
+      "icon": "🎯",
+      "tags": ["targeting", "os"],
+      "prompt": "Create a smart group for computers running macOS 14 or higher"
+    },
+    {
+      "id": "config-wifi",
+      "title": "Wi-Fi Configuration",
+      "description": "Configuration profile for enterprise Wi-Fi settings",
+      "category": "Configuration Profiles",
+      "icon": "📡",
+      "tags": ["network", "security"],
+      "prompt": "Create a configuration profile for enterprise Wi-Fi with WPA2 Enterprise authentication"
+    },
+    {
+      "id": "policy-updates",
+      "title": "Software Update Policy",
+      "description": "Automated macOS software update deployment",
+      "category": "Policies",
+      "icon": "⬆️",
+      "tags": ["updates", "maintenance"],
+      "prompt": "Create a policy to automatically install macOS software updates"
+    },
+    {
+      "id": "smart-group-laptops",
+      "title": "MacBook Smart Group",
+      "description": "Target all MacBook devices in your fleet",
+      "category": "Smart Groups",
+      "icon": "💻",
+      "tags": ["hardware", "targeting"],
+      "prompt": "Create a smart group for all MacBook Pro and MacBook Air computers"
+    },
+    {
+      "id": "config-security",
+      "title": "Security Settings",
+      "description": "Configuration profile for security hardening",
+      "category": "Configuration Profiles",
+      "icon": "🔒",
+      "tags": ["security", "compliance"],
+      "prompt": "Create a configuration profile to enable FileVault encryption and require strong passwords"
+    }
+  ]
+}
