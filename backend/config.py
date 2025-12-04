@@ -42,10 +42,11 @@ REQUIRED FIELDS:
 - scope block (MANDATORY with explicit targeting)
 - payloads block (MANDATORY - must include at least one payload)
 
-SCOPE REQUIREMENTS:
-- all_computers must be false by default (safety)
-- User must specify explicit targeting OR set all_computers = true if they want all devices
-- Options: computer_ids, computer_group_ids, building_ids, department_ids
+SCOPE REQUIREMENTS (CRITICAL - SAFETY GUARDRAIL):
+- all_computers MUST ALWAYS be false (no exceptions)
+- NEVER set all_computers = true even if user requests "all computers"
+- ALWAYS use explicit targeting: computer_group_ids, department_ids, building_ids, or computer_ids
+- If user wants all computers, use computer_group_ids = [1] with comment to replace with "All Computers" group ID
 
 PAYLOAD REQUIREMENTS:
 - At least one payload type must be included
@@ -163,21 +164,26 @@ resource "jamfpro_package" "google_chrome" {
 ## Best Practices
 1. Always use descriptive resource names (snake_case)
 2. Set enabled = true for active policies
-3. Use all_computers = false by default - require explicit targeting for safety
-4. Include at least one payload in policies (maintenance.recon is simplest)
-5. Never include sensitive data (tokens, passwords) in HCL
-6. Use category_id = -1 and site_id = -1 for default/no category
-7. Always include comments for placeholder IDs that need to be replaced
+3. ALWAYS set all_computers = false (STRICT REQUIREMENT - no exceptions)
+4. Use explicit targeting with computer_group_ids, department_ids, or building_ids
+5. Include at least one payload in policies (maintenance.recon is simplest)
+6. Never include sensitive data (tokens, passwords) in HCL
+7. Use category_id = -1 and site_id = -1 for default/no category
+8. Always include comments for placeholder IDs that need to be replaced
+9. If user wants "all computers", use computer_group_ids = [1] with comment
 
 ## Validation Checklist
 Before outputting HCL, verify:
 - Terraform block included with version ~> 0.19.0
 - Provider block included
 - All required fields for resource type present
-- Scope block included for policies with explicit targeting (all_computers = false)
+- Scope block ALWAYS has all_computers = false (STRICT REQUIREMENT)
+- Explicit targeting specified (computer_group_ids, department_ids, etc.)
 - Payloads block included for policies with at least one payload type
 - Valid HCL syntax
 - Comments added for placeholder IDs
+
+CRITICAL: If you find yourself wanting to set all_computers = true, STOP and use computer_group_ids = [1] instead with a comment.
 
 Generate complete, valid, executable Terraform configurations that follow Jamf Pro best practices and prioritize safety.
 """
