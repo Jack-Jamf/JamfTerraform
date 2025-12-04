@@ -31,22 +31,56 @@ def healthz():
 @app.post("/api/generate", response_model=GenerateHCLResponse)
 async def generate_hcl(request: GenerateHCLRequest):
     """
-    Generate HCL configuration from user prompt.
+    Generate HCL configuration from user prompt with scope confirmation.
     
     Args:
-        request: GenerateHCLRequest with prompt and optional context
+        request: GenerateHCLRequest with prompt, optional context, and scope_confirmation
         
     Returns:
-        GenerateHCLResponse with generated HCL or error
+        GenerateHCLResponse with generated HCL, confirmation request, or error
     """
     try:
+        # Check if this is a policy-related request
+        is_policy_request = any(keyword in request.prompt.lower() for keyword in [
+            'policy', 'install', 'deploy', 'configure', 'update', 'script', 'package'
+        ])
+        
+        # If it's a policy request and no scope confirmation yet, ask for it
+        if is_policy_request and request.scope_confirmation is None:
+            return GenerateHCLResponse(
+                hcl="",
+                success=True,
+                requires_confirmation=True,
+                confirmation_message=(
+                    "Before I generate this policy, I need to know the scope:\n\n"
+                    "**How should this policy be targeted?**\n\n"
+                    "1. **Specific group** - Reply with the group name (e.g., 'IT Department', 'Sales Team')\n"
+                    "2. **All computers** - Reply 'all computers' (⚠️ will affect all devices)\n"
+                    "3. **Custom** - Specify department, building, or computer IDs\n\n"
+                    "💡 **Tip**: For safety, I recommend targeting a specific group first."
+                )
+            )
+        
+        # If we have scope confirmation, add it to the context
+        context = request.context or ""
+        if request.scope_confirmation:
+            scope_lower = request.scope_confirmation.lower()
+            
+            if 'all computer' in scope_lower:
+                context += f"\n\nSCOPE INSTRUCTION: User confirmed they want to target ALL COMPUTERS. Use computer_group_ids = [1] with comment '# Replace with All Computers group ID'."
+            else:
+                # User specified a group/department/etc
+                context += f"\n\nSCOPE INSTRUCTION: User wants to target: {request.scope_confirmation}. Use appropriate targeting (computer_group_ids, department_ids, etc.) with placeholder ID and comment to replace with actual ID."
+        
+        # Generate HCL
         llm_service = get_llm_service()
-        hcl = llm_service.generate_hcl(request.prompt, request.context)
+        hcl = llm_service.generate_hcl(request.prompt, context)
         
         return GenerateHCLResponse(
             hcl=hcl,
             success=True,
-            error=None
+            error=None,
+            requires_confirmation=False
         )
     except ValueError as e:
         # Configuration error (e.g., missing API key)
