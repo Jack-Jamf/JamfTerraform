@@ -10,7 +10,12 @@ app = FastAPI(title="JamfTerraform Backend", version="1.0.0")
 # CORS middleware for frontend communication
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:1420"],  # Frontend and agent
+    allow_origins=[
+        "http://localhost:5173",  # Local frontend dev
+        "http://localhost:1420",  # Tauri agent
+        "https://jamfaform-production.up.railway.app",  # Railway backend (for testing)
+        "*"  # Allow all origins (you can restrict this later)
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

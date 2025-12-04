@@ -1,6 +1,9 @@
 import type { GenerateHCLRequest, GenerateHCLResponse } from '../types';
 
-const API_BASE_URL = 'http://localhost:8000';
+// Use Railway backend in production, localhost for development
+const API_BASE_URL = import.meta.env.PROD 
+  ? 'https://jamfaform-production.up.railway.app'
+  : 'http://localhost:8000';
 
 export class ExecutionService {
   /**
