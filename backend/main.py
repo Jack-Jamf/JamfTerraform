@@ -309,6 +309,10 @@ async def bulk_export_resources(request: BulkExportRequest):
                 fetched = await fetcher.fetch_all(res.type, res.id, recursive=request.include_dependencies)
                 for r_type, r_data in fetched:
                     r_id = r_data.get('id')
+                    if r_id is None:
+                        # Try general.id which is common in Jamf objects (Policy, Profile, etc.)
+                        r_id = r_data.get('general', {}).get('id')
+                    
                     if r_id is not None:
                         key = (r_type, str(r_id))
                         all_unique_resources[key] = (r_type, r_data)
