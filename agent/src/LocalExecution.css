@@ -50,19 +50,24 @@
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
-.token-input {
+.jamf-input {
   padding: 0.75rem;
   background: #1e1e1e;
   color: #e0e0e0;
   border: 1px solid #3e3e3e;
   border-radius: 8px;
   font-size: 0.875rem;
+  width: 100%;
 }
 
-.token-input:focus {
+.jamf-input:focus {
   outline: none;
   border-color: #6366f1;
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.jamf-input::placeholder {
+  color: #6b7280;
 }
 
 .button-group {

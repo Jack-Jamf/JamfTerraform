@@ -16,7 +16,7 @@ export interface GenerateHCLResponse {
   error?: string;
 }
 
-export type TabType = 'chat' | 'cookbook';
+export type TabType = 'chat';
 
 export interface CookbookModule {
   id: string;
@@ -30,5 +30,19 @@ export interface CookbookModule {
 
 export interface CookbookData {
   modules: CookbookModule[];
+}
+
+export interface JamfCredentials {
+  url: string;
+  username: string;
+  password: string;
+}
+
+export type AuthStatus = 'idle' | 'testing' | 'success' | 'error';
+
+export interface AuthState {
+  credentials: JamfCredentials | null;
+  status: AuthStatus;
+  message?: string;
 }
 

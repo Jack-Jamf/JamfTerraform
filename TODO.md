@@ -4,13 +4,10 @@
 
 ### Agent Terraform Execution
 
-- **Issue**: Terraform execution failed during testing
-- **Causes**:
-  1. Formatting issues in generated HCL config
-  2. Invalid/missing Jamf API key for testing
-- **Status**: Deferred for later
+- **Issue**: Terraform execution needs testing with real Jamf credentials
+- **Status**: Authentication implemented, pending real-world testing
 - **Next Steps**:
-  - Test with valid Jamf API credentials
+  - Test with valid Jamf Pro instance
   - Verify HCL formatting from Gemini API
   - May need to add HCL validation/formatting step
   - Consider adding `terraform fmt` before `terraform apply`

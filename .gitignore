@@ -125,3 +125,6 @@ desktop.ini
 !.env.example
 !.gitignore
 !README.md
+
+# Provider reference documentation (local copy)
+docs/provider-reference/terraform-provider-jamfpro/

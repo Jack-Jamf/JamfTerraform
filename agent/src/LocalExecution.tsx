@@ -12,7 +12,9 @@ interface TerraformOutput {
 
 export default function LocalExecution() {
   const [hclCode, setHclCode] = useState('');
-  const [jamfToken, setJamfToken] = useState('');
+  const [jamfUrl, setJamfUrl] = useState('');
+  const [jamfUsername, setJamfUsername] = useState('');
+  const [jamfPassword, setJamfPassword] = useState('');
   const [output, setOutput] = useState<TerraformOutput[]>([]);
   const [isExecuting, setIsExecuting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,8 +42,8 @@ export default function LocalExecution() {
   }, []);
 
   const handleExecute = async () => {
-    if (!hclCode.trim() || !jamfToken.trim()) {
-      setError('Please provide both HCL code and Jamf token');
+    if (!hclCode.trim() || !jamfUrl.trim() || !jamfUsername.trim() || !jamfPassword.trim()) {
+      setError('Please provide HCL code and all Jamf credentials (URL, username, password)');
       return;
     }
 
@@ -52,7 +54,9 @@ export default function LocalExecution() {
     try {
       const result = await invoke<string>('run_terraform', {
         hclCode,
-        jamfToken,
+        jamfUrl,
+        jamfUsername,
+        jamfPassword,
       });
       
       setOutput((prev) => [
@@ -104,20 +108,44 @@ export default function LocalExecution() {
         </div>
 
         <div className="form-group">
-          <label>Jamf API Token</label>
+          <label>Jamf Pro URL</label>
+          <input
+            type="url"
+            value={jamfUrl}
+            onChange={(e) => setJamfUrl(e.target.value)}
+            placeholder="https://your-instance.jamfcloud.com"
+            className="jamf-input"
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Jamf Username</label>
+          <input
+            type="text"
+            value={jamfUsername}
+            onChange={(e) => setJamfUsername(e.target.value)}
+            placeholder="admin"
+            className="jamf-input"
+            autoComplete="off"
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Jamf Password</label>
           <input
             type="password"
-            value={jamfToken}
-            onChange={(e) => setJamfToken(e.target.value)}
-            placeholder="Enter your Jamf API token"
-            className="token-input"
+            value={jamfPassword}
+            onChange={(e) => setJamfPassword(e.target.value)}
+            placeholder="Enter your Jamf password"
+            className="jamf-input"
+            autoComplete="off"
           />
         </div>
 
         <div className="button-group">
           <button
             onClick={handleExecute}
-            disabled={isExecuting || !hclCode.trim() || !jamfToken.trim()}
+            disabled={isExecuting || !hclCode.trim() || !jamfUrl.trim() || !jamfUsername.trim() || !jamfPassword.trim()}
             className="execute-button"
           >
             {isExecuting ? '⏳ Executing...' : '▶️ Execute Terraform'}

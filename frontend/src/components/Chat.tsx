@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import type { Message } from '../types';
 import { ExecutionService } from '../services/ExecutionService';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -25,23 +25,13 @@ const Chat: React.FC<ChatProps> = ({ selectedRecipe, onRecipeUsed }) => {
     scrollToBottom();
   }, [messages]);
 
-  // Handle selected recipe from cookbook
-  useEffect(() => {
-    if (selectedRecipe) {
-      setInput(selectedRecipe);
-      if (onRecipeUsed) {
-        onRecipeUsed();
-      }
-    }
-  }, [selectedRecipe, onRecipeUsed]);
-
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  const sendMessage = useCallback(async (messageContent: string) => {
+    if (!messageContent.trim() || isLoading) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: input.trim(),
+      content: messageContent.trim(),
       timestamp: new Date(),
     };
 
@@ -73,6 +63,20 @@ const Chat: React.FC<ChatProps> = ({ selectedRecipe, onRecipeUsed }) => {
     } finally {
       setIsLoading(false);
     }
+  }, [isLoading]);
+
+  // Handle selected recipe from cookbook
+  useEffect(() => {
+    if (selectedRecipe) {
+      sendMessage(selectedRecipe);
+      if (onRecipeUsed) {
+        onRecipeUsed();
+      }
+    }
+  }, [selectedRecipe, onRecipeUsed, sendMessage]);
+
+  const handleSend = () => {
+    sendMessage(input);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

@@ -14,6 +14,7 @@ app.add_middleware(
         "http://localhost:5173",  # Local frontend dev
         "http://localhost:1420",  # Tauri agent
         "https://jamfaform-production.up.railway.app",  # Railway backend (for testing)
+        "https://jamfaform.workshopse.com",  # Custom Domain
         "*"  # Allow all origins (you can restrict this later)
     ],
     allow_credentials=True,

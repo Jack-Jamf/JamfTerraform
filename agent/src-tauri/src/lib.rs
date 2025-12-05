@@ -14,7 +14,9 @@ struct TerraformOutput {
 async fn run_terraform(
     app: tauri::AppHandle,
     hcl_code: String,
-    jamf_token: String,
+    jamf_url: String,
+    jamf_username: String,
+    jamf_password: String,
 ) -> Result<String, String> {
     // Create temporary directory for Terraform files
     let temp_dir = tempfile::tempdir()
@@ -29,12 +31,27 @@ async fn run_terraform(
     file.write_all(hcl_code.as_bytes())
         .map_err(|e| format!("Failed to write HCL code: {}", e))?;
     
-    // Execute terraform apply with JAMF_TOKEN environment variable
+    // Step 1: Run terraform init to download providers
+    let init_output = Command::new("terraform")
+        .arg("init")
+        .current_dir(temp_dir.path())
+        .output()
+        .await
+        .map_err(|e| format!("Failed to run terraform init: {}", e))?;
+    
+    if !init_output.status.success() {
+        let stderr = String::from_utf8_lossy(&init_output.stderr);
+        return Err(format!("Terraform init failed: {}", stderr));
+    }
+    
+    // Step 2: Execute terraform apply with Jamf credentials as environment variables
     let mut child = Command::new("terraform")
         .arg("apply")
         .arg("-auto-approve")
         .current_dir(temp_dir.path())
-        .env("JAMF_TOKEN", jamf_token) // Token passed as env var, never logged
+        .env("JAMF_URL", jamf_url)           // Never logged
+        .env("JAMF_USERNAME", jamf_username) // Never logged
+        .env("JAMF_PASSWORD", jamf_password) // Never logged
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()

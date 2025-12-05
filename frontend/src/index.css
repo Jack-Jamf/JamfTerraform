@@ -1,37 +1,51 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
 
 :root {
-  /* Color Palette - Modern Dark Theme */
-  --color-bg-primary: #0a0a0f;
-  --color-bg-secondary: #13131a;
-  --color-bg-tertiary: #1a1a24;
-  --color-bg-elevated: #1f1f2e;
+  /* Jamf Color Palette */
+  --color-jamf-blue: #778eb1;
+  --color-jamf-red: #d94453;
+  --color-jamf-grey-dark: #444444;
+  --color-jamf-grey-medium: #929292;
+  --color-jamf-grey-light: #bfbfbf;
+  --color-jamf-off-white: #f8f8f8;
 
-  --color-surface: #252535;
-  --color-surface-hover: #2d2d40;
-  --color-surface-active: #35354a;
+  /* Theme Mapping */
+  --color-bg-primary: #121212; /* Darker background for contrast */
+  --color-bg-secondary: #1e1e1e;
+  --color-bg-tertiary: #2d2d2d;
+  --color-bg-elevated: #333333;
 
-  --color-border: #2d2d40;
-  --color-border-light: #3a3a4f;
+  --color-surface: #252525;
+  --color-surface-hover: #2f2f2f;
+  --color-surface-active: #3a3a3a;
 
-  --color-text-primary: #e8e8f0;
-  --color-text-secondary: #a8a8b8;
-  --color-text-tertiary: #6e6e80;
+  --color-border: #444444;
+  --color-border-light: #555555;
 
-  --color-accent: #6366f1;
-  --color-accent-hover: #7c3aed;
-  --color-accent-light: rgba(99, 102, 241, 0.1);
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #bfbfbf;
+  --color-text-tertiary: #929292;
 
-  --color-success: #10b981;
+  --color-accent: #d94453; /* Jamf Red as accent */
+  --color-accent-hover: #c43c4a;
+  --color-accent-light: rgba(217, 68, 83, 0.1);
+
+  --color-primary-brand: #778eb1; /* Jamf Blue */
+
+  --color-success: #10b981; /* Keeping standard success */
   --color-success-light: rgba(16, 185, 129, 0.1);
 
-  --color-error: #ef4444;
-  --color-error-light: rgba(239, 68, 68, 0.1);
+  --color-error: #d94453; /* Using Jamf Red for error too */
+  --color-error-light: rgba(217, 68, 83, 0.1);
 
   --color-warning: #f59e0b;
 
   /* Gradients */
-  --gradient-primary: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%);
+  --gradient-primary: linear-gradient(
+    135deg,
+    #778eb1 0%,
+    #d94453 100%
+  ); /* Blue to Red */
   --gradient-surface: linear-gradient(
     180deg,
     rgba(255, 255, 255, 0.03) 0%,

@@ -41,6 +41,12 @@
   margin-top: -4px;
 }
 
+.app-status-group {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
 .app-status {
   display: flex;
   align-items: center;
