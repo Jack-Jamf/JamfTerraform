@@ -251,6 +251,45 @@ class JamfClient:
             
             data = response.json()
             return data.get("script", {})
+
+    async def get_package_detail(self, package_id: int) -> dict:
+        """Fetch detailed package data."""
+        url = f"{self.base_url}/JSSResource/packages/id/{package_id}"
+        
+        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
+            response = await client.get(url, headers=self._get_headers())
+            
+            if response.status_code != 200:
+                raise ValueError(f"Failed to fetch package {package_id}: {response.status_code}")
+            
+            data = response.json()
+            return data.get("package", {})
+
+    async def get_configuration_profile_detail(self, profile_id: int) -> dict:
+        """Fetch detailed configuration profile data."""
+        url = f"{self.base_url}/JSSResource/osxconfigurationprofiles/id/{profile_id}"
+        
+        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
+            response = await client.get(url, headers=self._get_headers())
+            
+            if response.status_code != 200:
+                raise ValueError(f"Failed to fetch profile {profile_id}: {response.status_code}")
+            
+            data = response.json()
+            return data.get("os_x_configuration_profile", {})
+
+    async def get_computer_group_detail(self, group_id: int) -> dict:
+        """Fetch detailed computer group data (smart or static)."""
+        url = f"{self.base_url}/JSSResource/computergroups/id/{group_id}"
+        
+        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
+            response = await client.get(url, headers=self._get_headers())
+            
+            if response.status_code != 200:
+                raise ValueError(f"Failed to fetch group {group_id}: {response.status_code}")
+            
+            data = response.json()
+            return data.get("computer_group", {})
     
     async def get_all_instance_resources(self) -> dict:
         """

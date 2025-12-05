@@ -220,6 +220,12 @@ async def get_resource_detail(request: JamfResourceDetailRequest):
             resource_data = await client.get_policy_detail(request.resource_id)
         elif request.resource_type == "scripts":
             resource_data = await client.get_script_detail(request.resource_id)
+        elif request.resource_type == "packages":
+            resource_data = await client.get_package_detail(request.resource_id)
+        elif request.resource_type == "config-profiles":
+            resource_data = await client.get_configuration_profile_detail(request.resource_id)
+        elif request.resource_type == "smart-groups":
+            resource_data = await client.get_computer_group_detail(request.resource_id)
         elif request.resource_type == "jamf-app-catalog":
             resource_data = await client.get_jamf_app_catalog_detail(request.resource_id)
         # Add more resource types as needed
