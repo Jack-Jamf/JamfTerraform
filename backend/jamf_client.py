@@ -165,7 +165,7 @@ class JamfClient:
             "config-profiles": self.list_configuration_profiles,
             "scripts": self.list_scripts,
             "packages": self.list_packages,
-            "mac-app-store-apps": self.list_mac_app_store_apps,
+            "jamf-app-catalog": self.list_jamf_app_catalog,
         }
         
         if resource_type not in resource_methods:
@@ -200,7 +200,7 @@ class JamfClient:
             data = response.json()
             return data.get("buildings", [])
     
-    async def list_mac_app_store_apps(self) -> list:
+    async def list_jamf_app_catalog(self) -> list:
         """List all Jamf App Installers (Jamf App Catalog)."""
         url = f"{self.base_url}/api/v1/app-installers/deployments"
         
@@ -255,10 +255,9 @@ class JamfClient:
         resources["buildings"] = await self.list_buildings()
         resources["scripts"] = await self.list_scripts()
         resources["packages"] = await self.list_packages()
-        resources["mac-app-store-apps"] = await self.list_mac_app_store_apps()
+        resources["jamf-app-catalog"] = await self.list_jamf_app_catalog()
         resources["policies"] = await self.list_policies()
         resources["config-profiles"] = await self.list_configuration_profiles()
         resources["smart-groups"] = await self.list_computer_groups()
         
         return resources
-

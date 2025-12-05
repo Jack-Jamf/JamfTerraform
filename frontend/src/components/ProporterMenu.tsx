@@ -22,7 +22,7 @@ const RESOURCE_TYPES: ResourceType[] = [
   { id: 'config-profiles', name: 'Configuration Profiles', icon: '⚙️', description: 'Import macOS/iOS configuration profiles' },
   { id: 'scripts', name: 'Scripts', icon: '📜', description: 'Import scripts from Jamf Pro' },
   { id: 'packages', name: 'Packages', icon: '📦', description: 'Import package definitions' },
-  { id: 'mac-app-store-apps', name: 'Jamf App Catalog', icon: '🍎', description: 'Import Jamf App Catalog installers' },
+  { id: 'jamf-app-catalog', name: 'Jamf App Catalog', icon: '🍎', description: 'Import Jamf App Catalog installers' },
 ];
 
 interface JamfResource {

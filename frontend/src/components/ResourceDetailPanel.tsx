@@ -76,7 +76,7 @@ const ResourceDetailPanel: React.FC<ResourceDetailPanelProps> = ({
       buildings: '🏢',
       'config-profiles': '⚙️',
       'smart-groups': '👥',
-      'mac-app-store-apps': '🍎',
+      'jamf-app-catalog': '🍎',
     };
     return icons[type] || '📄';
   };

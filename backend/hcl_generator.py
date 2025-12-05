@@ -15,6 +15,7 @@ class HCLGenerator:
             'buildings': self._generate_building_hcl,
             'config-profiles': self._generate_config_profile_hcl,
             'smart-groups': self._generate_computer_group_hcl,
+            'jamf-app-catalog': self._generate_app_catalog_hcl,
         }
     
     def generate_resource_hcl(self, resource_type: str, resource_data: dict, resource_name: Optional[str] = None) -> str:
@@ -34,6 +35,32 @@ class HCLGenerator:
         
         generator_func = self.templates[resource_type]
         return generator_func(resource_data, resource_name)
+
+
+
+    def _generate_app_catalog_hcl(self, app_data: dict, resource_name: Optional[str] = None) -> str:
+        """
+        Generate HCL for a Jamf App Catalog app (App Installer).
+        Note: Current Terraform provider support for App Installers is limited.
+        """
+        name = app_data.get('name', 'Unnamed App')
+        tf_name = resource_name or self._sanitize_name(name)
+        app_details = app_data.get('app', {})
+        bundle_id = app_details.get('bundleId', '')
+        version = app_details.get('latestVersion', '')
+        
+        hcl = [f'# Jamf App Catalog: {name}']
+        hcl.append(f'# Bundle ID: {bundle_id}')
+        hcl.append(f'# Version: {version}')
+        hcl.append(f'# Note: App Installers resource is not yet fully supported in Terraform provider')
+        hcl.append(f'resource "jamfpro_app_installer" "{tf_name}" {{')
+        hcl.append(f'  name                  = "{name}"')
+        hcl.append(f'  target_group_id       = {app_data.get("smartGroup", {}).get("id", "null")}')
+        hcl.append(f'  deployment_type       = "{app_data.get("deploymentType", "SELF_SERVICE")}"')
+        hcl.append(f'  update_behavior       = "{app_data.get("updateBehavior", "AUTOMATIC")}"')
+        hcl.append('}')
+        
+        return '\n'.join(hcl)
     
     def generate_file(self, resources_sorted: list) -> str:
         """
