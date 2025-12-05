@@ -108,8 +108,11 @@ class HCLGenerator:
         # Category
         category = general.get('category', {})
         if isinstance(category, dict) and category.get('id', -1) not in [-1, 0]:
-            cat_name = self._sanitize_name(category.get('name', ''))
-            hcl.append(f'  category_id = jamfpro_category.{cat_name}.id')
+             if category.get('name'):
+                cat_name = self._sanitize_name(category.get('name', ''))
+                hcl.append(f'  category_id = jamfpro_category.{cat_name}.id')
+             else:
+                hcl.append(f'  category_id = {category["id"]}')
         
         # Frequency
         if 'frequency' in general:
@@ -122,13 +125,23 @@ class HCLGenerator:
             hcl.append('  scope {')
             hcl.append(f'    all_computers = {str(scope.get("all_computers", False)).lower()}')
             
-            # Computer groups
-            comp_groups = scope.get('computer_groups', [])
-            if comp_groups:
-                group_ids = ', '.join([f'jamfpro_computer_group.{self._sanitize_name(g.get("name", ""))}.id' 
-                                      for g in comp_groups if isinstance(g, dict)])
-                if group_ids:
-                    hcl.append(f'    computer_group_ids = [{group_ids}]')
+            # Computer groups (Hybrid: Refs + Raw IDs)
+            group_targets = []
+            
+            # 1. From 'computer_groups' (Objects)
+            for g in scope.get('computer_groups', []):
+                 if isinstance(g, dict):
+                      if g.get('name'):
+                           group_targets.append(f'jamfpro_computer_group.{self._sanitize_name(g["name"])}.id')
+                      elif g.get('id'):
+                           group_targets.append(str(g['id']))
+
+            # 2. From 'computer_group_ids' (Flat list)
+            for gid in scope.get('computer_group_ids', []):
+                 group_targets.append(str(gid))
+
+            if group_targets:
+                hcl.append(f'    computer_group_ids = [{", ".join(group_targets)}]')
             
             hcl.append('  }')
         
@@ -137,23 +150,31 @@ class HCLGenerator:
         if packages:
             hcl.append('')
             for pkg in packages:
-                if isinstance(pkg, dict) and pkg.get('id', -1) not in [-1, 0]:
+                if isinstance(pkg, dict):
                     hcl.append('  package {')
-                    pkg_name = self._sanitize_name(pkg.get('name', ''))
-                    hcl.append(f'    id     = jamfpro_package.{pkg_name}.id')
+                    if pkg.get('name'):
+                        pkg_name = self._sanitize_name(pkg['name'])
+                        hcl.append(f'    id     = jamfpro_package.{pkg_name}.id')
+                    else:
+                        hcl.append(f'    id     = {pkg.get("id")}')
+                    
                     hcl.append(f'    action = "{pkg.get("action", "Install")}"')
                     hcl.append('  }')
-        
+
         # Scripts
         scripts = policy_data.get('scripts', [])
         if scripts:
             hcl.append('')
             hcl.append('  payloads {')
             for script in scripts:
-                if isinstance(script, dict) and script.get('id'):
+                if isinstance(script, dict):
                     hcl.append('    scripts {')
-                    script_name = self._sanitize_name(script.get('name', ''))
-                    hcl.append(f'      id       = jamfpro_script.{script_name}.id')
+                    if script.get('name'):
+                        script_name = self._sanitize_name(script['name'])
+                        hcl.append(f'      id       = jamfpro_script.{script_name}.id')
+                    else:
+                        hcl.append(f'      id       = {script.get("id")}')
+                        
                     hcl.append(f'      priority = "{script.get("priority", "After")}"')
                     hcl.append('    }')
             hcl.append('  }')
