@@ -265,7 +265,17 @@ class HCLGenerator:
         hcl.append(f'  name = "{name}"')
         
         if is_smart and 'criteria' in group_data:
-            hcl.append('  # Note: criteria require manual configuration')
+            for criterion in group_data['criteria']:
+                if isinstance(criterion, dict):
+                    hcl.append('  criteria {')
+                    hcl.append(f'    name = "{criterion.get("name", "")}"')
+                    hcl.append(f'    priority = {criterion.get("priority", 0)}')
+                    hcl.append(f'    and_or = "{criterion.get("and_or", "and")}"')
+                    hcl.append(f'    search_type = "{criterion.get("search_type", "is")}"')
+                    hcl.append(f'    value = "{criterion.get("value", "")}"')
+                    hcl.append(f'    opening_paren = {str(criterion.get("opening_paren", False)).lower()}')
+                    hcl.append(f'    closing_paren = {str(criterion.get("closing_paren", False)).lower()}')
+                    hcl.append('  }')
         
         hcl.append('}')
         return '\n'.join(hcl)
