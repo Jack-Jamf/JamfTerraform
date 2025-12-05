@@ -64,6 +64,18 @@ class JamfResourceDetailRequest(BaseModel):
     resource_id: int = Field(..., description="ID of the resource")
 
 
+class BulkResourceIdentifier(BaseModel):
+    """Identifier for a resource in bulk export."""
+    type: str
+    id: int
+
+
+class BulkExportRequest(BaseModel):
+    """Request to export multiple specific resources."""
+    credentials: JamfCredentials
+    resources: list[BulkResourceIdentifier]
+
+
 class ResourceDependency(BaseModel):
     """A single dependency."""
     type: str = Field(..., description="Dependency type (script, package, etc.)")

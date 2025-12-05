@@ -16,6 +16,37 @@ export class ExecutionService {
    * Generate HCL configuration from a prompt.
    * This is the centralized execution API call as per workspace rules.
    */
+  static async bulkExport(
+    credentials: JamfCredentials,
+    resources: Array<{ type: string; id: number }>
+  ): Promise<Blob | null> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/jamf/bulk-export`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          credentials: {
+             url: credentials.url,
+             username: credentials.username,
+             password: credentials.password
+          },
+          resources
+        }),
+      });
+
+      if (!response.ok) {
+         console.error('Bulk export failed', await response.text());
+         return null;
+      }
+      return await response.blob();
+    } catch (e) {
+      console.error('Bulk export error:', e);
+      return null;
+    }
+  }
+
   static async generateHCL(request: GenerateHCLRequest): Promise<GenerateHCLResponse> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/generate`, {

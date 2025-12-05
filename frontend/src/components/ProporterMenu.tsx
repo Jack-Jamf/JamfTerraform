@@ -42,6 +42,48 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
   const [instanceHCL, setInstanceHCL] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Selection / Bulk Export State
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [selection, setSelection] = useState<Set<string>>(new Set());
+
+  const handleToggleSelect = (type: string, id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const key = `${type}:${id}`;
+    const newSel = new Set(selection);
+    if (newSel.has(key)) newSel.delete(key);
+    else newSel.add(key);
+    setSelection(newSel);
+  };
+
+  const handleBulkDownload = async () => {
+    if (!credentials || selection.size === 0) return;
+    
+    setLoading(true);
+    const resources = Array.from(selection).map(key => {
+        const [type, idStr] = key.split(':');
+        return { type, id: parseInt(idStr) };
+    });
+
+    const blob = await ExecutionService.bulkExport(credentials, resources);
+    setLoading(false);
+
+    if (blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'jamf_bulk_export.zip';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        // Clear selection after download? Maybe optional.
+        // setSelection(new Set()); 
+        // setIsSelecting(false);
+    } else {
+        setError('Bulk export failed');
+    }
+  };
 
   const handleButtonClick = () => {
     if (isEnabled) {
@@ -142,7 +184,17 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
                 <button className="back-btn" onClick={handleBack}>←</button>
               )}
               {viewMode === 'main' && '📦 Proporter - Import Config'}
-              {viewMode === 'resource-type' && selectedResourceType && `${selectedResourceType.icon} ${selectedResourceType.name}`}
+              {viewMode === 'resource-type' && selectedResourceType && (
+                <div className="header-title-row">
+                  <span>{selectedResourceType.icon} {selectedResourceType.name}</span>
+                  <button 
+                    className={`select-mode-btn ${isSelecting ? 'active' : ''}`}
+                    onClick={(e) => { e.stopPropagation(); setIsSelecting(!isSelecting); }}
+                  >
+                    {isSelecting ? 'Done' : 'Select'}
+                  </button>
+                </div>
+              )}
               {viewMode === 'instance-export' && '📦 Instance Export'}
             </h3>
             <button
@@ -153,11 +205,22 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
                 setViewMode('main');
                 setSelectedResourceType(null);
                 setResources([]);
+                setIsSelecting(false);
+                setSelection(new Set());
               }}
             >
               ✕
             </button>
           </div>
+          
+          {isSelecting && selection.size > 0 && (
+            <div className="bulk-actions-bar">
+              <span className="selection-count">{selection.size} items</span>
+              <button className="bulk-download-btn" onClick={handleBulkDownload}>
+                ⬇️ Download ZIP
+              </button>
+            </div>
+          )}
 
           <div className="proporter-menu-content">
             {viewMode === 'main' && (
@@ -209,9 +272,18 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
                     {resources.map((resource) => (
                       <div
                         key={resource.id}
-                        className="resource-item"
-                        onClick={() => handleResourceClick(resource)}
+                        className={`resource-item ${selectedResourceType && selection.has(`${selectedResourceType.id}:${resource.id}`) ? 'selected' : ''}`}
+                        onClick={(e) => isSelecting && selectedResourceType ? handleToggleSelect(selectedResourceType.id, resource.id, e) : handleResourceClick(resource)}
                       >
+                        {isSelecting && selectedResourceType && (
+                            <input 
+                                type="checkbox"
+                                className="resource-checkbox"
+                                checked={selection.has(`${selectedResourceType.id}:${resource.id}`)}
+                                readOnly
+                                style={{ marginRight: '10px' }}
+                            />
+                        )}
                         <span className="resource-icon">{selectedResourceType?.icon}</span>
                         <div className="resource-info">
                           <div className="resource-name">{resource.name}</div>
