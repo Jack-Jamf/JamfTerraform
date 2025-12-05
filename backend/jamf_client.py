@@ -202,7 +202,7 @@ class JamfClient:
     
     async def list_mac_app_store_apps(self) -> list:
         """List all Jamf App Installers (Jamf App Catalog)."""
-        url = f"{self.base_url}/api/v1/app-installers"
+        url = f"{self.base_url}/api/v1/app-installers/deployments"
         
         async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
             response = await client.get(url, headers=self._get_headers())
