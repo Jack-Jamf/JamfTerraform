@@ -5,6 +5,22 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import './Chat.css';
 
+const CopyButton = ({ text }: { text: string }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button className="copy-btn" onClick={handleCopy} title="Copy HCL">
+      {copied ? '✅' : '📋'}
+    </button>
+  );
+};
+
 const Chat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -130,18 +146,27 @@ const Chat: React.FC = () => {
                   </div>
                   <div className="message-text">
                     {message.role === 'assistant' ? (
-                      <SyntaxHighlighter
-                        language="hcl"
-                        style={vscDarkPlus}
-                        customStyle={{
-                          margin: 0,
-                          borderRadius: 'var(--radius-md)',
-                          fontSize: '0.875rem',
-                          background: 'var(--color-bg-tertiary)',
-                        }}
-                      >
-                        {message.content}
-                      </SyntaxHighlighter>
+                      (message.content.startsWith('# NOTE:') || message.content.startsWith('# QUESTION:')) ? (
+                        <div className="assistant-note">
+                          {message.content.replace(/^# (NOTE|QUESTION): /, '')}
+                        </div>
+                      ) : (
+                        <div className="code-block-wrapper">
+                          <CopyButton text={message.content} />
+                          <SyntaxHighlighter
+                            language="hcl"
+                            style={vscDarkPlus}
+                            customStyle={{
+                              margin: 0,
+                              borderRadius: 'var(--radius-md)',
+                              fontSize: '0.875rem',
+                              background: 'var(--color-bg-tertiary)',
+                            }}
+                          >
+                            {message.content}
+                          </SyntaxHighlighter>
+                        </div>
+                      )
                     ) : (
                       message.content
                     )}
