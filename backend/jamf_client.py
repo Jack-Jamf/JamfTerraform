@@ -290,6 +290,33 @@ class JamfClient:
             
             data = response.json()
             return data.get("computer_group", {})
+
+    async def get_category_detail(self, category_id: int) -> dict:
+        """Fetch detailed category data."""
+        url = f"{self.base_url}/JSSResource/categories/id/{category_id}"
+        
+        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
+            response = await client.get(url, headers=self._get_headers())
+            
+            if response.status_code != 200:
+                # Category might not exist or be generic?
+                raise ValueError(f"Failed to fetch category {category_id}: {response.status_code}")
+            
+            data = response.json()
+            return data.get("category", {})
+
+    async def get_building_detail(self, building_id: int) -> dict:
+        """Fetch detailed building data."""
+        url = f"{self.base_url}/JSSResource/buildings/id/{building_id}"
+        
+        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
+            response = await client.get(url, headers=self._get_headers())
+            
+            if response.status_code != 200:
+                raise ValueError(f"Failed to fetch building {building_id}: {response.status_code}")
+            
+            data = response.json()
+            return data.get("building", {})
     
     async def get_all_instance_resources(self) -> dict:
         """

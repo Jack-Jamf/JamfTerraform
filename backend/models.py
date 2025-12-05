@@ -76,6 +76,7 @@ class JamfResourceDetailResponse(BaseModel):
     resource: dict = Field(..., description="Full resource data")
     dependencies: list[ResourceDependency] = Field(default_factory=list)
     hcl: str = Field(..., description="Generated HCL for this resource")
+    bundle_hcl: str | None = Field(None, description="Complete HCL bundle with dependencies")
     success: bool = Field(True)
     error: str | None = None
 

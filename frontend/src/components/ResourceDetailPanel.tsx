@@ -49,7 +49,10 @@ const ResourceDetailPanel: React.FC<ResourceDetailPanelProps> = ({
   const handleDownloadHCL = () => {
     if (!detail) return;
 
-    const blob = new Blob([detail.hcl], { type: 'text/plain' });
+    // Use bundle_hcl if available (includes dependencies), otherwise fallback to single resource hcl
+    const content = detail.bundle_hcl || detail.hcl;
+
+    const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -139,7 +142,7 @@ const ResourceDetailPanel: React.FC<ResourceDetailPanelProps> = ({
               {/* Actions */}
               <div className="detail-actions">
                 <button className="btn-primary" onClick={handleDownloadHCL}>
-                  ⬇️ Download .tf
+                  ⬇️ Download .tf {detail.bundle_hcl ? "(Bundle)" : ""}
                 </button>
                 <button className="btn-secondary" onClick={handleCopyHCL}>
                   📋 Copy HCL

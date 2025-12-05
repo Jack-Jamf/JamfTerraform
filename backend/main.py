@@ -8,6 +8,8 @@ from llm_service import get_llm_service
 from jamf_client import JamfClient
 from dependency_resolver import DependencyResolver
 from hcl_generator import HCLGenerator
+from recursive_fetcher import RecursiveFetcher
+from collections import defaultdict
 import json
 from pathlib import Path
 
@@ -214,30 +216,20 @@ async def get_resource_detail(request: JamfResourceDetailRequest):
         
         await client.get_auth_token()
         
-        # Fetch detailed resource data
-        resource_data = {}
-        if request.resource_type == "policies":
-            resource_data = await client.get_policy_detail(request.resource_id)
-        elif request.resource_type == "scripts":
-            resource_data = await client.get_script_detail(request.resource_id)
-        elif request.resource_type == "packages":
-            resource_data = await client.get_package_detail(request.resource_id)
-        elif request.resource_type == "config-profiles":
-            resource_data = await client.get_configuration_profile_detail(request.resource_id)
-        elif request.resource_type == "smart-groups":
-            resource_data = await client.get_computer_group_detail(request.resource_id)
-        elif request.resource_type == "jamf-app-catalog":
-            resource_data = await client.get_jamf_app_catalog_detail(request.resource_id)
-        # Add more resource types as needed
-        else:
-            return JamfResourceDetailResponse(
-                resource={},
-                hcl="",
-                success=False,
-                error=f"Resource type {request.resource_type} not supported yet"
-            )
+        # Fetch detailed resource data recursively
+        fetcher = RecursiveFetcher(client)
+        all_resources = await fetcher.fetch_all(request.resource_type, request.resource_id)
         
-        # Extract dependencies
+        # Find root resource data
+        resource_data = next((d for t, d in all_resources if t == request.resource_type and d.get('id') == request.resource_id), None)
+        
+        if not resource_data:
+             # Fallback: resource might be found but ID mismatch type?
+             # Try simple fetch if recursive failed to identify root?
+             # Or raise error.
+             raise ValueError(f"Root resource data not found for {request.resource_type} {request.resource_id}")
+
+        # Extract dependencies (direct only, for UI tree)
         resolver = DependencyResolver()
         deps_dict = resolver.extract_dependencies(request.resource_type, resource_data)
         
@@ -245,7 +237,6 @@ async def get_resource_detail(request: JamfResourceDetailRequest):
         dependencies = []
         for dep_type, dep_ids in deps_dict.items():
             for dep_id in dep_ids:
-                # For now, use ID as name (could fetch actual names if needed)
                 dependencies.append(ResourceDependency(
                     type=dep_type,
                     id=dep_id,
@@ -256,10 +247,19 @@ async def get_resource_detail(request: JamfResourceDetailRequest):
         hcl_generator = HCLGenerator()
         hcl = hcl_generator.generate_resource_hcl(request.resource_type, resource_data)
         
+        # Generate Bundle HCL (Dependencies included)
+        resources_by_type = defaultdict(list)
+        for r_type, r_data in all_resources:
+            resources_by_type[r_type].append(r_data)
+            
+        sorted_resources = resolver.topological_sort(resources_by_type)
+        bundle_hcl = hcl_generator.generate_file(sorted_resources)
+        
         return JamfResourceDetailResponse(
             resource=resource_data,
             dependencies=dependencies,
             hcl=hcl,
+            bundle_hcl=bundle_hcl,
             success=True
         )
         

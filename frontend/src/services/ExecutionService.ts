@@ -223,6 +223,7 @@ export interface JamfResourceDetailResponse {
   resource: any;
   dependencies: ResourceDependency[];
   hcl: string;
+  bundle_hcl?: string;
   success: boolean;
   error?: string;
 }
