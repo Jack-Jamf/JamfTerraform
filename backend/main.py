@@ -2,13 +2,15 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from models import (GenerateHCLRequest, GenerateHCLResponse, JamfResourcesRequest, 
                    JamfResourceListResponse, JamfInstanceExportRequest, JamfInstanceExportResponse,
-                   JamfInstanceSummary)
+                   JamfInstanceSummary, JamfResourceDetailRequest, JamfResourceDetailResponse, 
+                   ResourceDependency)
 from llm_service import get_llm_service
 from jamf_client import JamfClient
 from dependency_resolver import DependencyResolver
 from hcl_generator import HCLGenerator
 import json
 from pathlib import Path
+
 
 app = FastAPI(title="JamfTerraform Backend", version="1.0.0")
 
@@ -189,4 +191,81 @@ async def export_jamf_instance(request: JamfInstanceExportRequest):
             hcl="",
             success=False,
             error=f"Failed to export instance: {str(e)}"
+        )
+
+
+@app.post("/api/jamf/resource-detail", response_model=JamfResourceDetailResponse)
+async def get_resource_detail(request: JamfResourceDetailRequest):
+    """
+    Get detailed information about a specific resource including dependencies and HCL.
+    
+    Args:
+        request: JamfResourceDetailRequest with credentials, resource type, and ID
+        
+    Returns:
+        JamfResourceDetailResponse with full resource data, dependencies, and HCL
+    """
+    try:
+        client = JamfClient(
+            url=request.credentials.url,
+            username=request.credentials.username,
+            password=request.credentials.password
+        )
+        
+        await client.get_auth_token()
+        
+        # Fetch detailed resource data
+        resource_data = {}
+        if request.resource_type == "policies":
+            resource_data = await client.get_policy_detail(request.resource_id)
+        elif request.resource_type == "scripts":
+            resource_data = await client.get_script_detail(request.resource_id)
+        # Add more resource types as needed
+        else:
+            return JamfResourceDetailResponse(
+                resource={},
+                hcl="",
+                success=False,
+                error=f"Resource type {request.resource_type} not supported yet"
+            )
+        
+        # Extract dependencies
+        resolver = DependencyResolver()
+        deps_dict = resolver.extract_dependencies(request.resource_type, resource_data)
+        
+        # Convert to ResourceDependency models
+        dependencies = []
+        for dep_type, dep_ids in deps_dict.items():
+            for dep_id in dep_ids:
+                # For now, use ID as name (could fetch actual names if needed)
+                dependencies.append(ResourceDependency(
+                    type=dep_type,
+                    id=dep_id,
+                    name=f"{dep_type}_{dep_id}"
+                ))
+        
+        # Generate HCL
+        hcl_generator = HCLGenerator()
+        hcl = hcl_generator.generate_resource_hcl(request.resource_type, resource_data)
+        
+        return JamfResourceDetailResponse(
+            resource=resource_data,
+            dependencies=dependencies,
+            hcl=hcl,
+            success=True
+        )
+        
+    except ValueError as e:
+        return JamfResourceDetailResponse(
+            resource={},
+            hcl="",
+            success=False,
+            error=str(e)
+        )
+    except Exception as e:
+        return JamfResourceDetailResponse(
+            resource={},
+            hcl="",
+            success=False,
+            error=f"Failed to fetch resource details: {str(e)}"
         )

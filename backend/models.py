@@ -57,3 +57,25 @@ class JamfInstanceExportResponse(BaseModel):
     error: str | None = Field(None, description="Error message if export failed")
 
 
+class JamfResourceDetailRequest(BaseModel):
+    """Request for individual resource details."""
+    credentials: JamfCredentials
+    resource_type: str = Field(..., description="Type of resource (policies, scripts, etc.)")
+    resource_id: int = Field(..., description="ID of the resource")
+
+
+class ResourceDependency(BaseModel):
+    """A single dependency."""
+    type: str = Field(..., description="Dependency type (script, package, etc.)")
+    id: int
+    name: str
+
+
+class JamfResourceDetailResponse(BaseModel):
+    """Response with resource details, dependencies, and HCL."""
+    resource: dict = Field(..., description="Full resource data")
+    dependencies: list[ResourceDependency] = Field(default_factory=list)
+    hcl: str = Field(..., description="Generated HCL for this resource")
+    success: bool = Field(True)
+    error: str | None = None
+

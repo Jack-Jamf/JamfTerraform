@@ -155,6 +155,49 @@ export class ExecutionService {
       };
     }
   }
+
+  /**
+   * Get detailed information about a specific resource.
+   */
+  static async getResourceDetail(
+    credentials: JamfCredentials,
+    resourceType: string,
+    resourceId: number
+  ): Promise<JamfResourceDetailResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/jamf/resource-detail`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          credentials: {
+            url: credentials.url,
+            username: credentials.username,
+            password: credentials.password,
+          },
+          resource_type: resourceType,
+          resource_id: resourceId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get resource detail:', error);
+      return {
+        resource: {},
+        dependencies: [],
+        hcl: '',
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
+      };
+    }
+  }
 }
 
 export interface JamfInstanceSummary {
@@ -165,6 +208,20 @@ export interface JamfInstanceSummary {
 
 export interface JamfInstanceExportResponse {
   summary: JamfInstanceSummary[];
+  hcl: string;
+  success: boolean;
+  error?: string;
+}
+
+export interface ResourceDependency {
+  type: string;
+  id: number;
+  name: string;
+}
+
+export interface JamfResourceDetailResponse {
+  resource: any;
+  dependencies: ResourceDependency[];
   hcl: string;
   success: boolean;
   error?: string;

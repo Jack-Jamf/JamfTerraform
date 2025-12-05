@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ExecutionService, type JamfResourceListResponse, type JamfInstanceExportResponse, type JamfInstanceSummary } from '../services/ExecutionService';
 import type { JamfCredentials } from '../types';
+import ResourceDetailPanel from './ResourceDetailPanel';
 import './ProporterMenu.css';
 
 interface ProporterMenuProps {
@@ -34,6 +35,7 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('main');
   const [selectedResourceType, setSelectedResourceType] = useState<ResourceType | null>(null);
+  const [selectedResource, setSelectedResource] = useState<JamfResource | null>(null);
   const [resources, setResources] = useState<JamfResource[]>([]);
   const [instanceSummary, setInstanceSummary] = useState<JamfInstanceSummary[]>([]);
   const [instanceHCL, setInstanceHCL] = useState<string>('');
@@ -46,6 +48,7 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
       if (isExpanded) {
         setViewMode('main');
         setSelectedResourceType(null);
+        setSelectedResource(null);
         setResources([]);
         setInstanceSummary([]);
         setError(null);
@@ -97,14 +100,14 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
   const handleBack = () => {
     setViewMode('main');
     setSelectedResourceType(null);
+    setSelectedResource(null);
     setResources([]);
     setInstanceSummary([]);
     setError(null);
   };
 
   const handleResourceClick = (resource: JamfResource) => {
-    console.log('Generate HCL for:', selectedResourceType?.id, resource.id);
-    alert(`Coming soon: Generate HCL for ${resource.name}`);
+    setSelectedResource(resource);
   };
 
   const handleDownloadHCL = () => {
@@ -256,6 +259,17 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
             )}
           </div>
         </div>
+      )}
+
+      {/* Resource Detail Panel */}
+      {selectedResource && selectedResourceType && credentials && (
+        <ResourceDetailPanel
+          credentials={credentials}
+          resourceType={selectedResourceType.id}
+          resourceId={selectedResource.id}
+          resourceName={selectedResource.name}
+          onClose={() => setSelectedResource(null)}
+        />
       )}
     </div>
   );
