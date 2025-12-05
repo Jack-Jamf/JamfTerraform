@@ -201,17 +201,18 @@ class JamfClient:
             return data.get("buildings", [])
     
     async def list_mac_app_store_apps(self) -> list:
-        """List all Mac App Store apps (App Installers)."""
-        url = f"{self.base_url}/JSSResource/macapplications"
+        """List all Jamf App Installers (Jamf App Catalog)."""
+        url = f"{self.base_url}/api/v1/app-installers"
         
         async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
             response = await client.get(url, headers=self._get_headers())
             
             if response.status_code != 200:
-                raise ValueError(f"Failed to fetch mac app store apps: {response.status_code}")
+                raise ValueError(f"Failed to fetch app installers: {response.status_code}")
             
             data = response.json()
-            return data.get("mac_applications", [])
+            # v1 API returns results array
+            return data.get("results", [])
     
     async def get_policy_detail(self, policy_id: int) -> dict:
         """Fetch detailed policy data."""
