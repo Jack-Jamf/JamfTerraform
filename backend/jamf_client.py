@@ -214,6 +214,18 @@ class JamfClient:
             # v1 API returns results array
             return data.get("results", [])
     
+    async def get_jamf_app_catalog_detail(self, app_id: int) -> dict:
+        """Fetch detailed Jamf App Catalog deployment data."""
+        url = f"{self.base_url}/api/v1/app-installers/deployments/{app_id}"
+        
+        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
+            response = await client.get(url, headers=self._get_headers())
+            
+            if response.status_code != 200:
+                raise ValueError(f"Failed to fetch app deployment {app_id}: {response.status_code}")
+            
+            return response.json()
+    
     async def get_policy_detail(self, policy_id: int) -> dict:
         """Fetch detailed policy data."""
         url = f"{self.base_url}/JSSResource/policies/id/{policy_id}"

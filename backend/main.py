@@ -220,6 +220,8 @@ async def get_resource_detail(request: JamfResourceDetailRequest):
             resource_data = await client.get_policy_detail(request.resource_id)
         elif request.resource_type == "scripts":
             resource_data = await client.get_script_detail(request.resource_id)
+        elif request.resource_type == "jamf-app-catalog":
+            resource_data = await client.get_jamf_app_catalog_detail(request.resource_id)
         # Add more resource types as needed
         else:
             return JamfResourceDetailResponse(
