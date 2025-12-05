@@ -249,7 +249,16 @@ class HCLGenerator:
             cat_name = self._sanitize_name(category.get('name', ''))
             hcl.append(f'  category_id = jamfpro_category.{cat_name}.id')
         
-        hcl.append('  # Note: payloads require manual configuration')
+        if 'payloads' in general:
+            hcl.append('  payloads = <<-EOF')
+            # Indent each line of the payload for better readability
+            payload_lines = general['payloads'].splitlines()
+            for line in payload_lines:
+                hcl.append(f'    {line}')
+            hcl.append('  EOF')
+        else:
+            hcl.append('  # Note: payloads not found or require manual configuration')
+        
         hcl.append('}')
         return '\n'.join(hcl)
     
