@@ -13,7 +13,7 @@ class RecursiveFetcher:
         self.processing_queue: List[Tuple[str, int]] = []
         self.visited: Set[Tuple[str, int]] = set()
 
-    async def fetch_all(self, root_type: str, root_id: int) -> List[Tuple[str, dict]]:
+    async def fetch_all(self, root_type: str, root_id: int, recursive: bool = True) -> List[Tuple[str, dict]]:
         """
         Fetch resource and all dependencies.
         Returns list of (type, data) tuples.
@@ -23,12 +23,12 @@ class RecursiveFetcher:
         self.visited = set()
         
         # Start with root
-        await self._fetch_node(root_type, root_id)
+        await self._fetch_node(root_type, root_id, recursive)
         
         # Return as list
         return [(t, d) for (t, i), d in self.fetched_resources.items()]
 
-    async def _fetch_node(self, resource_type: str, resource_id: int):
+    async def _fetch_node(self, resource_type: str, resource_id: int, recursive: bool):
         key = (resource_type, resource_id)
         if key in self.visited:
             return
@@ -40,18 +40,19 @@ class RecursiveFetcher:
             data = await self._get_resource_detail(resource_type, resource_id)
             self.fetched_resources[key] = data
             
-            # Extract dependencies
-            deps = self.resolver.extract_dependencies(resource_type, data)
-            
-            # Recurse for each dependency
-            tasks = []
-            for dep_type, dep_ids in deps.items():
-                for dep_id in dep_ids:
-                    if (dep_type, dep_id) not in self.visited:
-                        tasks.append(self._fetch_node(dep_type, dep_id))
-            
-            if tasks:
-                await asyncio.gather(*tasks)
+            if recursive:
+                # Extract dependencies
+                deps = self.resolver.extract_dependencies(resource_type, data)
+                
+                # Recurse for each dependency
+                tasks = []
+                for dep_type, dep_ids in deps.items():
+                    for dep_id in dep_ids:
+                        if (dep_type, dep_id) not in self.visited:
+                            tasks.append(self._fetch_node(dep_type, dep_id, True))
+                
+                if tasks:
+                    await asyncio.gather(*tasks)
                 
         except Exception as e:
             print(f"Error fetching {resource_type} {resource_id}: {e}")

@@ -74,6 +74,7 @@ class BulkExportRequest(BaseModel):
     """Request to export multiple specific resources."""
     credentials: JamfCredentials
     resources: list[BulkResourceIdentifier]
+    include_dependencies: bool = Field(True, description="Whether to recursively fetch dependencies")
 
 
 class ResourceDependency(BaseModel):

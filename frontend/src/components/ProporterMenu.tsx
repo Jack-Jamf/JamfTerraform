@@ -46,6 +46,7 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
   // Selection / Bulk Export State
   const [isSelecting, setIsSelecting] = useState(false);
   const [selection, setSelection] = useState<Set<string>>(new Set());
+  const [includeDependencies, setIncludeDependencies] = useState(true);
 
   const handleToggleSelect = (type: string, id: number, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -65,7 +66,7 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
         return { type, id: parseInt(idStr) };
     });
 
-    const blob = await ExecutionService.bulkExport(credentials, resources);
+    const blob = await ExecutionService.bulkExport(credentials, resources, includeDependencies);
     setLoading(false);
 
     if (blob) {
@@ -95,6 +96,9 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
         setResources([]);
         setInstanceSummary([]);
         setError(null);
+        setIsSelecting(false);
+        setSelection(new Set());
+        setIncludeDependencies(true);
       }
     }
   };
@@ -215,7 +219,18 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
           
           {isSelecting && selection.size > 0 && (
             <div className="bulk-actions-bar">
-              <span className="selection-count">{selection.size} items</span>
+               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span className="selection-count">{selection.size} item{selection.size !== 1 ? 's' : ''}</span>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', cursor: 'pointer', color: 'var(--color-text-secondary)' }}>
+                      <input 
+                         type="checkbox" 
+                         checked={includeDependencies} 
+                         onChange={(e) => setIncludeDependencies(e.target.checked)}
+                         style={{ accentColor: 'var(--color-jamf-blue)', cursor: 'pointer' }}
+                      />
+                      <span>Include Dependencies</span>
+                  </label>
+               </div>
               <button className="bulk-download-btn" onClick={handleBulkDownload}>
                 ⬇️ Download ZIP
               </button>

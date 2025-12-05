@@ -18,7 +18,8 @@ export class ExecutionService {
    */
   static async bulkExport(
     credentials: JamfCredentials,
-    resources: Array<{ type: string; id: number }>
+    resources: Array<{ type: string; id: number }>,
+    includeDependencies: boolean = true
   ): Promise<Blob | null> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/jamf/bulk-export`, {
@@ -32,7 +33,8 @@ export class ExecutionService {
              username: credentials.username,
              password: credentials.password
           },
-          resources
+          resources,
+          include_dependencies: includeDependencies
         }),
       });
 

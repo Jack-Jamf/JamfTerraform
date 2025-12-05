@@ -306,7 +306,7 @@ async def bulk_export_resources(request: BulkExportRequest):
         # 1. Fetch all requested resources + dependencies
         for res in request.resources:
             try:
-                fetched = await fetcher.fetch_all(res.type, res.id)
+                fetched = await fetcher.fetch_all(res.type, res.id, recursive=request.include_dependencies)
                 for r_type, r_data in fetched:
                     r_id = r_data.get('id')
                     if r_id is not None:
