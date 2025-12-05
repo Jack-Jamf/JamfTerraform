@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ExecutionService, type JamfResourceListResponse } from '../services/ExecutionService';
+import { ExecutionService, type JamfResourceListResponse, type JamfInstanceExportResponse, type JamfInstanceSummary } from '../services/ExecutionService';
 import type { JamfCredentials } from '../types';
 import './ProporterMenu.css';
 
@@ -28,22 +28,47 @@ interface JamfResource {
   name: string;
 }
 
+type ViewMode = 'main' | 'resource-type' | 'instance-export';
+
 const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('main');
   const [selectedResourceType, setSelectedResourceType] = useState<ResourceType | null>(null);
   const [resources, setResources] = useState<JamfResource[]>([]);
+  const [instanceSummary, setInstanceSummary] = useState<JamfInstanceSummary[]>([]);
+  const [instanceHCL, setInstanceHCL] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleButtonClick = () => {
     if (isEnabled) {
       setIsExpanded(!isExpanded);
-      // Reset state when closing
       if (isExpanded) {
+        setViewMode('main');
         setSelectedResourceType(null);
         setResources([]);
+        setInstanceSummary([]);
         setError(null);
       }
+    }
+  };
+
+  const handleExportAll = async () => {
+    if (!credentials) return;
+    
+    setLoading(true);
+    setError(null);
+    setViewMode('instance-export');
+    
+    const response: JamfInstanceExportResponse = await ExecutionService.exportJamfInstance(credentials);
+    
+    setLoading(false);
+    
+    if (response.success) {
+      setInstanceSummary(response.summary);
+      setInstanceHCL(response.hcl);
+    } else {
+      setError(response.error || 'Failed to export instance');
     }
   };
 
@@ -51,6 +76,7 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
     if (!credentials) return;
     
     setSelectedResourceType(resourceType);
+    setViewMode('resource-type');
     setLoading(true);
     setError(null);
     
@@ -69,15 +95,28 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
   };
 
   const handleBack = () => {
+    setViewMode('main');
     setSelectedResourceType(null);
     setResources([]);
+    setInstanceSummary([]);
     setError(null);
   };
 
   const handleResourceClick = (resource: JamfResource) => {
-    // TODO: Phase 3 - Generate HCL for selected resource
     console.log('Generate HCL for:', selectedResourceType?.id, resource.id);
     alert(`Coming soon: Generate HCL for ${resource.name}`);
+  };
+
+  const handleDownloadHCL = () => {
+    const blob = new Blob([instanceHCL], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'jamf_instance.tf';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -95,20 +134,19 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
         <div className="proporter-menu-dropdown">
           <div className="dropdown-header">
             <h3>
-              {selectedResourceType ? (
-                <>
-                  <button className="back-btn" onClick={handleBack}>←</button>
-                  {selectedResourceType.icon} {selectedResourceType.name}
-                </>
-              ) : (
-                '📦 Proporter - Import Config'
+              {viewMode !== 'main' && (
+                <button className="back-btn" onClick={handleBack}>←</button>
               )}
+              {viewMode === 'main' && '📦 Proporter - Import Config'}
+              {viewMode === 'resource-type' && selectedResourceType && `${selectedResourceType.icon} ${selectedResourceType.name}`}
+              {viewMode === 'instance-export' && '📦 Instance Export'}
             </h3>
             <button
               className="close-btn"
               onClick={(e) => {
                 e.stopPropagation();
                 setIsExpanded(false);
+                setViewMode('main');
                 setSelectedResourceType(null);
                 setResources([]);
               }}
@@ -118,12 +156,14 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
           </div>
 
           <div className="proporter-menu-content">
-            {!selectedResourceType ? (
-              // Resource type selection
+            {viewMode === 'main' && (
               <>
                 <div className="proporter-info">
-                  <p>Select a resource type to import from your connected Jamf Pro instance.</p>
+                  <p>Select a resource type or export your entire Jamf instance.</p>
                 </div>
+                <button className="export-all-btn" onClick={handleExportAll}>
+                  🌍 Export Entire Instance
+                </button>
                 <div className="resource-list">
                   {RESOURCE_TYPES.map((resourceType) => (
                     <div
@@ -141,23 +181,24 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
                   ))}
                 </div>
               </>
-            ) : (
-              // Resource list
+            )}
+
+            {viewMode === 'resource-type' && (
               <>
                 {loading ? (
                   <div className="proporter-loading">
-                    <span>⏳ Loading {selectedResourceType.name.toLowerCase()}...</span>
+                    <span>⏳ Loading {selectedResourceType?.name.toLowerCase()}...</span>
                   </div>
                 ) : error ? (
                   <div className="proporter-error">
                     <span>❌ {error}</span>
-                    <button onClick={() => handleResourceTypeClick(selectedResourceType)}>
+                    <button onClick={() => selectedResourceType && handleResourceTypeClick(selectedResourceType)}>
                       Retry
                     </button>
                   </div>
                 ) : resources.length === 0 ? (
                   <div className="proporter-empty">
-                    <span>No {selectedResourceType.name.toLowerCase()} found</span>
+                    <span>No {selectedResourceType?.name.toLowerCase()} found</span>
                   </div>
                 ) : (
                   <div className="resource-list">
@@ -167,7 +208,7 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
                         className="resource-item"
                         onClick={() => handleResourceClick(resource)}
                       >
-                        <span className="resource-icon">{selectedResourceType.icon}</span>
+                        <span className="resource-icon">{selectedResourceType?.icon}</span>
                         <div className="resource-info">
                           <div className="resource-name">{resource.name}</div>
                           <div className="resource-description">ID: {resource.id}</div>
@@ -179,6 +220,40 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
                 )}
               </>
             )}
+
+            {viewMode === 'instance-export' && (
+              <>
+                {loading ? (
+                  <div className="proporter-loading">
+                    <span>🔍 Scanning Jamf instance...</span>
+                  </div>
+                ) : error ? (
+                  <div className="proporter-error">
+                    <span>❌ {error}</span>
+                    <button onClick={handleExportAll}>Retry</button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="instance-summary">
+                      <h4>📊 Instance Summary</h4>
+                      {instanceSummary.map((summary) => (
+                        <div key={summary.resource_type} className="summary-item">
+                          <span className="summary-type">{summary.resource_type}</span>
+                          <span className="summary-count">{summary.count} resources</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="hcl-preview">
+                      <h4>📝 Generated HCL</h4>
+                      <pre>{instanceHCL}</pre>
+                    </div>
+                    <button className="download-btn" onClick={handleDownloadHCL}>
+                      ⬇️ Download jamf_instance.tf
+                    </button>
+                  </>
+                )}
+              </>
+            )}
           </div>
         </div>
       )}
@@ -187,4 +262,3 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
 };
 
 export default ProporterMenu;
-

@@ -263,3 +263,105 @@
   color: var(--color-text-tertiary);
 }
 
+/* Export All Button */
+.export-all-btn {
+  width: 100%;
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  background: linear-gradient(135deg, var(--color-jamf-blue), var(--color-jamf-red));
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.export-all-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(217, 68, 83, 0.3);
+}
+
+/* Instance Summary */
+.instance-summary {
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+}
+
+.instance-summary h4 {
+  margin: 0 0 var(--spacing-sm) 0;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--spacing-xs) 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.summary-item:last-child {
+  border-bottom: none;
+}
+
+.summary-type {
+  font-size: 0.8rem;
+  color: var(--color-text-primary);
+  text-transform: capitalize;
+}
+
+.summary-count {
+  font-size: 0.8rem;
+  color: var(--color-jamf-blue);
+  font-weight: 600;
+}
+
+/* HCL Preview */
+.hcl-preview {
+  margin-bottom: var(--spacing-md);
+  max-height: 200px;
+  overflow: auto;
+}
+
+.hcl-preview h4 {
+  margin: 0 0 var(--spacing-sm) 0;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.hcl-preview pre {
+  padding: var(--spacing-md);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-size: 0.75rem;
+  color: var(--color-text-primary);
+  overflow-x: auto;
+  margin: 0;
+}
+
+/* Download Button */
+.download-btn {
+  width: 100%;
+  padding: var(--spacing-md);
+  background: var(--color-jamf-blue);
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.download-btn:hover {
+  background: var(--color-jamf-red);
+  transform: translateY(-2px);
+}
+

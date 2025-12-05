@@ -1,7 +1,12 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from models import GenerateHCLRequest, GenerateHCLResponse
+from models import (GenerateHCLRequest, GenerateHCLResponse, JamfResourcesRequest, 
+                   JamfResourceListResponse, JamfInstanceExportRequest, JamfInstanceExportResponse,
+                   JamfInstanceSummary)
 from llm_service import get_llm_service
+from jamf_client import JamfClient
+from dependency_resolver import DependencyResolver
+from hcl_generator import HCLGenerator
 import json
 from pathlib import Path
 
@@ -79,3 +84,109 @@ async def get_cookbook():
     
     return cookbook_data
 
+
+@app.post("/api/jamf/resources", response_model=JamfResourceListResponse)
+async def list_jamf_resources(request: JamfResourcesRequest):
+    """
+    List resources from a Jamf Pro instance.
+    
+    Args:
+        request: JamfResourcesRequest with credentials and resource type
+        
+    Returns:
+        JamfResourceListResponse with list of resources
+    """
+    try:
+        client = JamfClient(
+            url=request.credentials.url,
+            username=request.credentials.username,
+            password=request.credentials.password
+        )
+        
+        resources = await client.get_resources(request.resource_type)
+        
+        return JamfResourceListResponse(
+            resources=resources,
+            resource_type=request.resource_type,
+            success=True,
+            error=None
+        )
+    except ValueError as e:
+        return JamfResourceListResponse(
+            resources=[],
+            resource_type=request.resource_type,
+            success=False,
+            error=str(e)
+        )
+    except Exception as e:
+        return JamfResourceListResponse(
+            resources=[],
+            resource_type=request.resource_type,
+            success=False,
+            error=f"Failed to fetch resources: {str(e)}"
+        )
+
+
+@app.post("/api/jamf/instance-export", response_model=JamfInstanceExportResponse)
+async def export_jamf_instance(request: JamfInstanceExportRequest):
+    """
+    Export all or selected resources from a Jamf Pro instance as HCL.
+    
+    Args:
+        request: JamfInstanceExportRequest with credentials and optional selected types
+        
+    Returns:
+        JamfInstanceExportResponse with HCL and resource summary
+    """
+    try:
+        client = JamfClient(
+            url=request.credentials.url,
+            username=request.credentials.username,
+            password=request.credentials.password
+        )
+        
+        # Fetch all resources (summary only for now - just id/name)
+        all_resources = await client.get_all_instance_resources()
+        
+        # Build summary
+        summary = []
+        for res_type, items in all_resources.items():
+            summary.append(JamfInstanceSummary(
+                resource_type=res_type,
+                count=len(items),
+                items=items
+            ))
+        
+        # For Phase 3, we'll generate HCL
+        # For now, return placeholder
+        hcl_generator = HCLGenerator()
+        dependency_resolver = DependencyResolver()
+        
+        # Note: Full implementation would fetch detailed data for each resource
+        # and resolve dependencies. For MVP, generate simple placeholder HCL
+        hcl = "# Jamf Pro Instance Export\n"
+        hcl += "# This is a Phase 3 MVP - full HCL generation coming soon\n\n"
+        
+        for res_type, items in all_resources.items():
+            hcl += f"# {res_type.upper()}: {len(items)} resources\n"
+        
+        return JamfInstanceExportResponse(
+            summary=summary,
+            hcl=hcl,
+            success=True,
+            error=None
+        )
+    except ValueError as e:
+        return JamfInstanceExportResponse(
+            summary=[],
+            hcl="",
+            success=False,
+            error=str(e)
+        )
+    except Exception as e:
+        return JamfInstanceExportResponse(
+            summary=[],
+            hcl="",
+            success=False,
+            error=f"Failed to export instance: {str(e)}"
+        )
