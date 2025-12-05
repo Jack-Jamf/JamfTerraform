@@ -1,7 +1,7 @@
 import asyncio
 from typing import Dict, List, Set, Tuple
-from .jamf_client import JamfClient
-from .dependency_resolver import DependencyResolver
+from jamf_client import JamfClient
+from dependency_resolver import DependencyResolver
 
 class RecursiveFetcher:
     """Fetches a resource and all its dependencies recursively."""
