@@ -76,6 +76,7 @@ const ResourceDetailPanel: React.FC<ResourceDetailPanelProps> = ({
       buildings: '🏢',
       'config-profiles': '⚙️',
       'smart-groups': '👥',
+      'mac-app-store-apps': '🍎',
     };
     return icons[type] || '📄';
   };

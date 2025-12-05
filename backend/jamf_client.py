@@ -165,12 +165,14 @@ class JamfClient:
             "config-profiles": self.list_configuration_profiles,
             "scripts": self.list_scripts,
             "packages": self.list_packages,
+            "mac-app-store-apps": self.list_mac_app_store_apps,
         }
         
         if resource_type not in resource_methods:
             raise ValueError(f"Unknown resource type: {resource_type}")
         
         return await resource_methods[resource_type]()
+
     
     async def list_categories(self) -> list:
         """List all categories."""
@@ -197,6 +199,19 @@ class JamfClient:
             
             data = response.json()
             return data.get("buildings", [])
+    
+    async def list_mac_app_store_apps(self) -> list:
+        """List all Mac App Store apps (App Installers)."""
+        url = f"{self.base_url}/JSSResource/macapplications"
+        
+        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
+            response = await client.get(url, headers=self._get_headers())
+            
+            if response.status_code != 200:
+                raise ValueError(f"Failed to fetch mac app store apps: {response.status_code}")
+            
+            data = response.json()
+            return data.get("mac_applications", [])
     
     async def get_policy_detail(self, policy_id: int) -> dict:
         """Fetch detailed policy data."""
@@ -239,6 +254,7 @@ class JamfClient:
         resources["buildings"] = await self.list_buildings()
         resources["scripts"] = await self.list_scripts()
         resources["packages"] = await self.list_packages()
+        resources["mac-app-store-apps"] = await self.list_mac_app_store_apps()
         resources["policies"] = await self.list_policies()
         resources["config-profiles"] = await self.list_configuration_profiles()
         resources["smart-groups"] = await self.list_computer_groups()
