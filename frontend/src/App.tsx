@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import type { JamfCredentials } from "./types";
 import { ExecutionService } from "./services/ExecutionService";
 import Chat from "./components/Chat";
-import CookbookMenu from "./components/CookbookMenu";
+import ProporterMenu from "./components/ProporterMenu";
 import JamfStatus from "./components/JamfStatus";
 import "./App.css";
 
@@ -10,8 +10,8 @@ function App() {
   const [backendStatus, setBackendStatus] = useState<"online" | "offline">(
     "offline"
   );
-  const [selectedRecipe, setSelectedRecipe] = useState<string | null>(null);
-  const [, setJamfCredentials] = useState<JamfCredentials | null>(null);
+  const [isJamfConnected, setIsJamfConnected] = useState(false);
+  const [jamfCredentials, setJamfCredentials] = useState<JamfCredentials | null>(null);
 
   useEffect(() => {
     // Check backend health on mount
@@ -27,12 +27,10 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleRecipeSelect = (prompt: string) => {
-    setSelectedRecipe(prompt);
-    // The Chat component will handle the selected recipe via props
+  const handleCredentialsChange = (credentials: JamfCredentials | null) => {
+    setJamfCredentials(credentials);
+    setIsJamfConnected(credentials !== null);
   };
-
-
 
   return (
     <div className="app">
@@ -45,8 +43,8 @@ function App() {
           </div>
         </div>
         <div className="app-status-group">
-          <CookbookMenu onRecipeSelect={handleRecipeSelect} />
-          <JamfStatus onCredentialsChange={setJamfCredentials} />
+          <ProporterMenu isEnabled={isJamfConnected} credentials={jamfCredentials} />
+          <JamfStatus onCredentialsChange={handleCredentialsChange} />
           <div className="app-status">
             <div className={`status-indicator ${backendStatus}`}></div>
             <span>
@@ -58,10 +56,7 @@ function App() {
 
       <div className="app-content">
         <div className="tab-content">
-          <Chat
-            selectedRecipe={selectedRecipe}
-            onRecipeUsed={() => setSelectedRecipe(null)}
-          />
+          <Chat />
         </div>
       </div>
     </div>

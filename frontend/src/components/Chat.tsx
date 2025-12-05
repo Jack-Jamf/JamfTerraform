@@ -1,19 +1,16 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import type { Message } from '../types';
+import type { Message, CookbookModule } from '../types';
 import { ExecutionService } from '../services/ExecutionService';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import './Chat.css';
 
-interface ChatProps {
-  selectedRecipe?: string | null;
-  onRecipeUsed?: () => void;
-}
-
-const Chat: React.FC<ChatProps> = ({ selectedRecipe, onRecipeUsed }) => {
+const Chat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [recipes, setRecipes] = useState<CookbookModule[]>([]);
+  const [recipesLoading, setRecipesLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -24,6 +21,23 @@ const Chat: React.FC<ChatProps> = ({ selectedRecipe, onRecipeUsed }) => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Fetch recipes on mount
+  useEffect(() => {
+    const fetchRecipes = async () => {
+      setRecipesLoading(true);
+      try {
+        const data = await ExecutionService.getCookbook();
+        setRecipes(data.modules);
+      } catch (err) {
+        console.error('Error fetching recipes:', err);
+      } finally {
+        setRecipesLoading(false);
+      }
+    };
+
+    fetchRecipes();
+  }, []);
 
   const sendMessage = useCallback(async (messageContent: string) => {
     if (!messageContent.trim() || isLoading) return;
@@ -65,15 +79,9 @@ const Chat: React.FC<ChatProps> = ({ selectedRecipe, onRecipeUsed }) => {
     }
   }, [isLoading]);
 
-  // Handle selected recipe from cookbook
-  useEffect(() => {
-    if (selectedRecipe) {
-      sendMessage(selectedRecipe);
-      if (onRecipeUsed) {
-        onRecipeUsed();
-      }
-    }
-  }, [selectedRecipe, onRecipeUsed, sendMessage]);
+  const handleRecipeClick = (recipe: CookbookModule) => {
+    sendMessage(recipe.prompt);
+  };
 
   const handleSend = () => {
     sendMessage(input);
@@ -160,6 +168,32 @@ const Chat: React.FC<ChatProps> = ({ selectedRecipe, onRecipeUsed }) => {
           </>
         )}
       </div>
+
+      {/* Recipe suggestions - only show when chat is empty */}
+      {messages.length === 0 && (
+        <div className="recipe-suggestions-container">
+          {recipesLoading ? (
+            <div className="recipe-suggestions-loading">⏳ Loading suggestions...</div>
+          ) : recipes.length > 0 ? (
+            <>
+              <div className="recipe-suggestions-label">Try these recipes:</div>
+              <div className="recipe-suggestions-scroll">
+                {recipes.map((recipe) => (
+                  <button
+                    key={recipe.id}
+                    className="recipe-suggestion-pill"
+                    onClick={() => handleRecipeClick(recipe)}
+                    disabled={isLoading}
+                  >
+                    <span className="recipe-pill-icon">{recipe.icon}</span>
+                    <span className="recipe-pill-text">{recipe.title}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : null}
+        </div>
+      )}
 
       <div className="chat-input-container">
         <div className="chat-input-wrapper">
