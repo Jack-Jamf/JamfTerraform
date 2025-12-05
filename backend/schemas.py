@@ -17,16 +17,6 @@ class ScopeIntent(BaseModel):
     def validate_targeting(self):
         if self.all_computers:
             raise ValueError("Targeting 'All Computers' is strictly forbidden. Please specify a group, building, or department.")
-        
-        has_targets = any([
-            self.computer_group_ids,
-            self.computer_ids,
-            self.building_ids,
-            self.department_ids
-        ])
-        
-        if not has_targets:
-            raise ValueError("No targets specified. Please provide at least one target (Group, Computer, Building, or Department).")
         return self
 
 # --- Payload Schemas ---
