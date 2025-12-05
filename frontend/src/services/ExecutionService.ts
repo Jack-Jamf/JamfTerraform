@@ -1,7 +1,8 @@
 import type { GenerateHCLRequest, GenerateHCLResponse, JamfCredentials } from '../types';
 
-// Always use Railway backend (local backend not running)
+// Using Railway backend
 const API_BASE_URL = 'https://jamfaform-production.up.railway.app';
+
 
 export interface JamfResourceListResponse {
   resources: Array<{ id: number; name: string }>;

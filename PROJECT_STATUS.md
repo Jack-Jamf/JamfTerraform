@@ -18,13 +18,13 @@ All core features have been implemented and tested successfully.
 
 ### Frontend (React + TypeScript)
 
-- [x] Tabbed navigation (Chat & Generate / Recipe Cookbook)
 - [x] Chat interface with message history
 - [x] Syntax highlighting for HCL output
 - [x] Recipe cookbook browser
-- [x] Recipe selection → chat integration
+- [x] Recipe selection → auto-generate integration
 - [x] Backend health monitoring
-- [x] Modern dark theme UI
+- [x] **Jamf Brand UI Refresh** (New!)
+- [x] **Custom Domain Deployment** (New!)
 - [x] Centralized API service
 
 ### Agent (Tauri + Rust + React)
@@ -45,10 +45,10 @@ All core features have been implemented and tested successfully.
 🚀 JamfTerraform End-to-End Test
 ==================================
 
-✓ Backend is healthy
+✓ Backend is healthy (Railway)
 ✓ Cookbook has 6 modules
 ✓ HCL generation successful
-✓ Frontend is accessible
+✓ Frontend is accessible (Vercel)
 ✓ Agent binary exists
 
 ✅ All tests passed!
@@ -56,27 +56,27 @@ All core features have been implemented and tested successfully.
 
 ## 🚀 Currently Running
 
-| Service  | Status     | Port/Type | Uptime |
-| -------- | ---------- | --------- | ------ |
-| Backend  | ✅ Running | 8000      | 3h35m  |
-| Frontend | ✅ Running | 5173      | N/A    |
-| Agent    | ✅ Running | Desktop   | 11m    |
+| Service  | Status     | URL                                         |
+| -------- | ---------- | ------------------------------------------- |
+| Backend  | ✅ Running | https://jamfaform-production.up.railway.app |
+| Frontend | ✅ Running | https://jamfaform.workshopse.com            |
+| Agent    | ✅ Running | Desktop App                                 |
 
 ## 📁 Project Structure
 
 ```
 JamfTerraform/
-├── backend/              ✅ Complete
+├── backend/              ✅ Complete (Deployed on Railway)
 │   ├── main.py
 │   ├── llm_service.py
 │   ├── cookbook_modules.json
 │   └── .env (API key configured)
-├── frontend/             ✅ Complete
+├── frontend/             ✅ Complete (Deployed on Vercel)
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── Chat.tsx
 │   │   │   ├── Cookbook.tsx
-│   │   │   └── TabBar.tsx
+│   │   │   └── JamfStatus.tsx
 │   │   └── services/
 │   │       └── ExecutionService.ts
 │   └── package.json
@@ -90,6 +90,7 @@ JamfTerraform/
 │   └── package.json
 ├── test-e2e.sh          ✅ Created
 ├── USER_GUIDE.md        ✅ Created
+├── DEPLOYMENT.md        ✅ Created
 └── README.md            ✅ Exists
 ```
 
@@ -116,8 +117,9 @@ JamfTerraform/
 - Token security (env var, never logged)
 - Automatic cleanup
 
-### Modern UI
+### Modern UI (Refreshed!)
 
+- **Jamf Brand Colors** (Blue/Red/Grey)
 - Premium dark theme
 - Syntax highlighting (HCL)
 - Responsive design
@@ -127,6 +129,8 @@ JamfTerraform/
 
 - ✅ `README.md` - Project overview
 - ✅ `USER_GUIDE.md` - Complete user guide
+- ✅ `DEPLOYMENT.md` - Backend deployment guide
+- ✅ `.agent/workflows/deploy_frontend_vercel.md` - Frontend deployment guide
 - ✅ `backend/README.md` - Backend documentation
 - ✅ `frontend/README.md` - Frontend documentation
 - ✅ `test-e2e.sh` - Automated testing
@@ -137,7 +141,7 @@ JamfTerraform/
 - ✅ Tokens as environment variables
 - ✅ No sensitive data in logs
 - ✅ Temporary file cleanup
-- ✅ CORS restrictions
+- ✅ CORS restrictions (Custom Domain Added)
 
 ## 🧪 Testing
 
@@ -164,17 +168,17 @@ Future enhancements could include:
 
 ### Quick Start
 
-1. **Generate HCL**:
+1.  **Generate HCL**:
 
-   - Open http://localhost:5173
-   - Use Chat or Cookbook
-   - Copy generated HCL
+    - Open https://jamfaform.workshopse.com
+    - Use Chat or Cookbook
+    - Copy generated HCL
 
-2. **Execute Locally**:
-   - Open Tauri agent
-   - Paste HCL + add token
-   - Click Execute
-   - Watch real-time output
+2.  **Execute Locally**:
+    - Open Tauri agent
+    - Paste HCL + add token
+    - Click Execute
+    - Watch real-time output
 
 ### Example Workflow
 
@@ -202,6 +206,7 @@ Agent → Paste HCL + Jamf token
 - ✅ Documentation complete
 - ✅ User guide created
 - ✅ Automated tests passing
+- ✅ **Deployed to Production**
 
 ## 🎉 Conclusion
 
@@ -211,6 +216,6 @@ All three components (backend, frontend, agent) are working together seamlessly 
 
 ---
 
-**Last Updated**: 2025-12-03  
-**Status**: ✅ Complete  
-**Version**: 1.0.0
+**Last Updated**: 2025-12-04
+**Status**: ✅ Complete
+**Version**: 1.1.0 (Jamf UI Refresh)

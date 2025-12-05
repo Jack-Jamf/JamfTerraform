@@ -147,6 +147,46 @@
 
 ---
 
+### **Phase 5: Intelligent Chat & Jamf Import** (Future)
+
+#### Interactive LLM Chat Logic
+
+- [ ] **Multi-turn Conversations**
+
+  - LLM asks clarifying questions before generating HCL
+  - User selects from options (e.g., "Which scope?", "Include scripts?")
+  - Progressive refinement of requirements
+
+- [ ] **Customization Checkpoints**
+
+  - Confirm resource names before generation
+  - Select from common options (triggers, payloads, scope)
+  - Preview and modify parameters
+
+- [ ] **Guided Workflow Mode**
+  - Step-by-step wizard for complex configurations
+  - Validate inputs at each step
+  - Summary review before final generation
+
+#### Jamf Pro Import (Read Existing Config → HCL)
+
+- [ ] **Connect to Jamf Pro Instance**
+
+  - Authenticate via API credentials
+  - Read-only access to existing configuration
+  - List available resources (policies, profiles, groups)
+
+- [ ] **Import Existing Resources**
+
+  - Select resources to import
+  - Generate equivalent HCL from existing config
+  - Enable "Infrastructure as Code" adoption
+
+- [ ] **Diff & Sync**
+  - Compare existing Jamf config with Terraform state
+  - Identify drift between actual and desired state
+  - Generate HCL to reconcile differences
+
 ## 📅 **Timeline to Production**
 
 ### **Minimum Viable Product (MVP)** - Ready Now!
