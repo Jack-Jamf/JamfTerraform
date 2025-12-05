@@ -173,9 +173,11 @@ class HCLGenerator:
             script_contents = script_data['script_contents'].replace('\\', '\\\\').replace('"', '\\"').replace('$', '\\$')
             hcl.append(f'  script_contents = "{script_contents}"')
         
-        if 'category' in script_data and script_data['category'].get('id', -1) not in [-1, 0]:
-            cat_name = self._sanitize_name(script_data['category'].get('name', ''))
-            hcl.append(f'  category_id = jamfpro_category.{cat_name}.id')
+        if 'category' in script_data:
+            category = script_data['category']
+            if isinstance(category, dict) and category.get('id', -1) not in [-1, 0]:
+                cat_name = self._sanitize_name(category.get('name', ''))
+                hcl.append(f'  category_id = jamfpro_category.{cat_name}.id')
         
         hcl.append('}')
         return '\n'.join(hcl)
