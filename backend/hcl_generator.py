@@ -1,5 +1,6 @@
 """HCL generator for Jamf Pro resources."""
 from typing import Dict, Any, Optional, TYPE_CHECKING
+from collections import defaultdict
 import json
 
 if TYPE_CHECKING:
@@ -17,6 +18,7 @@ class HCLGenerator:
             support_file_handler: Optional handler for file references. When provided,
                                   scripts and profiles will use file() references.
         """
+        self.used_names = defaultdict(set)
         self.support_file_handler = support_file_handler
         self.templates = {
             'policies': self._generate_policy_hcl,
@@ -56,7 +58,7 @@ class HCLGenerator:
         Generate HCL for a Jamf App Catalog app (App Installer).
         """
         name = app_data.get('name', 'Unnamed App')
-        tf_name = resource_name or self._sanitize_name(name)
+        tf_name = resource_name or self._get_unique_tf_name(name, 'jamfpro_app_installer')
         app_details = app_data.get('app', {})
         bundle_id = app_details.get('bundleId', '')
         version = app_details.get('latestVersion', '')
@@ -125,12 +127,28 @@ class HCLGenerator:
         if sanitized and not sanitized[0].isalpha():
             sanitized = 'r_' + sanitized
         return sanitized or 'unnamed_resource'
+
+    def _get_unique_tf_name(self, name: str, resource_type: str) -> str:
+        """
+        Get a unique Terraform resource name for the given type.
+        Resolves collisions by appending _1, _2, etc.
+        """
+        base_name = self._sanitize_name(name)
+        candidate = base_name
+        counter = 1
+        
+        while candidate in self.used_names[resource_type]:
+            candidate = f"{base_name}_{counter}"
+            counter += 1
+            
+        self.used_names[resource_type].add(candidate)
+        return candidate
     
     def _generate_policy_hcl(self, policy_data: dict, resource_name: Optional[str] = None) -> str:
         """Generate HCL for a Jamf Pro policy."""
         general = policy_data.get('general', {})
         name = general.get('name', 'Unnamed Policy')
-        tf_name = resource_name or self._sanitize_name(name)
+        tf_name = resource_name or self._get_unique_tf_name(name, 'jamfpro_policy')
         
         hcl = [f'resource "jamfpro_policy" "{tf_name}" {{']
         hcl.append(f'  name    = "{name}"')
@@ -224,7 +242,7 @@ class HCLGenerator:
     def _generate_script_hcl(self, script_data: dict, resource_name: Optional[str] = None) -> str:
         """Generate HCL for a Jamf Pro script."""
         name = script_data.get('name', 'Unnamed Script')
-        tf_name = resource_name or self._sanitize_name(name)
+        tf_name = resource_name or self._get_unique_tf_name(name, 'jamfpro_script')
         script_id = script_data.get('id')
         
         hcl = [f'resource "jamfpro_script" "{tf_name}" {{']
@@ -282,7 +300,7 @@ class HCLGenerator:
         The user must manually place the package file in the support_files/packages/ directory.
         """
         name = package_data.get('name', 'Unnamed Package')
-        tf_name = resource_name or self._sanitize_name(name)
+        tf_name = resource_name or self._get_unique_tf_name(name, 'jamfpro_package')
         filename = package_data.get('filename', f'{tf_name}.pkg')
         
         # Build the expected local path for the package file
@@ -327,7 +345,7 @@ class HCLGenerator:
     def _generate_category_hcl(self, category_data: dict, resource_name: Optional[str] = None) -> str:
         """Generate HCL for a Jamf Pro category."""
         name = category_data.get('name', 'Unnamed Category')
-        tf_name = resource_name or self._sanitize_name(name)
+        tf_name = resource_name or self._get_unique_tf_name(name, 'jamfpro_category')
         
         hcl = [f'resource "jamfpro_category" "{tf_name}" {{']
         hcl.append(f'  name = "{name}"')
@@ -341,7 +359,7 @@ class HCLGenerator:
     def _generate_building_hcl(self, building_data: dict, resource_name: Optional[str] = None) -> str:
         """Generate HCL for a Jamf Pro building."""
         name = building_data.get('name', 'Unnamed Building')
-        tf_name = resource_name or self._sanitize_name(name)
+        tf_name = resource_name or self._get_unique_tf_name(name, 'jamfpro_building')
         
         hcl = [f'resource "jamfpro_building" "{tf_name}" {{']
         hcl.append(f'  name = "{name}"')
@@ -359,7 +377,7 @@ class HCLGenerator:
         """Generate HCL for a macOS configuration profile."""
         general = profile_data.get('general', {})
         name = general.get('name', 'Unnamed Profile')
-        tf_name = resource_name or self._sanitize_name(name)
+        tf_name = resource_name or self._get_unique_tf_name(name, 'jamfpro_macos_configuration_profile_plist')
         profile_id = general.get('id') or profile_data.get('id')
         
         hcl = [f'resource "jamfpro_macos_configuration_profile_plist" "{tf_name}" {{']
@@ -428,10 +446,10 @@ class HCLGenerator:
     def _generate_computer_group_hcl(self, group_data: dict, resource_name: Optional[str] = None) -> str:
         """Generate HCL for a computer group (static or smart)."""
         name = group_data.get('name', 'Unnamed Group')
-        tf_name = resource_name or self._sanitize_name(name)
         is_smart = group_data.get('is_smart', False)
         
         resource_type = "jamfpro_computer_group_smart" if is_smart else "jamfpro_computer_group_static"
+        tf_name = resource_name or self._get_unique_tf_name(name, resource_type)
         
         hcl = [f'resource "{resource_type}" "{tf_name}" {{']
         hcl.append(f'  name = "{name}"')
