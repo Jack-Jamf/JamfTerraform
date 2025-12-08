@@ -226,6 +226,60 @@
   color: var(--color-text-secondary);
 }
 
+/* Export Progress */
+.export-progress {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+}
+
+.progress-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(119, 142, 177, 0.2);
+  border-top-color: var(--color-jamf-blue);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.progress-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.progress-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.progress-detail {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.progress-hint {
+  font-size: 0.7rem;
+  color: var(--color-text-tertiary);
+  font-style: italic;
+}
+
+/* Summary Total */
+.summary-total {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-jamf-blue);
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 /* Error state */
 .proporter-error {
   display: flex;

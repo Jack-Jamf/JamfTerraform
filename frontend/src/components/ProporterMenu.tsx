@@ -46,6 +46,9 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
   const [isSelecting, setIsSelecting] = useState(false);
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [includeDependencies, setIncludeDependencies] = useState(true);
+  
+  // Export progress state
+  const [exportPhase, setExportPhase] = useState<'idle' | 'scanning' | 'downloading'>('idle');
 
   const handleToggleSelect = (type: string, id: number, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -109,12 +112,14 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
     if (!credentials) return;
     
     setLoading(true);
+    setExportPhase('scanning');
     setError(null);
     setViewMode('instance-export');
     
     const response: JamfInstanceExportResponse = await ExecutionService.exportJamfInstance(credentials);
     
     setLoading(false);
+    setExportPhase('idle');
     
     if (response.success) {
       setInstanceSummary(response.summary);
@@ -128,6 +133,7 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
     if (!credentials || instanceSummary.length === 0) return;
     
     setLoading(true);
+    setExportPhase('downloading');
     
     // Collect all resource IDs from the summary
     const allResources: Array<{ type: string; id: number }> = [];
@@ -139,6 +145,7 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
     
     const blob = await ExecutionService.bulkExport(credentials, allResources, true);
     setLoading(false);
+    setExportPhase('idle');
     
     if (blob) {
       const url = URL.createObjectURL(blob);
@@ -339,9 +346,28 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
 
             {viewMode === 'instance-export' && (
               <>
-                {loading ? (
+                {loading && exportPhase === 'scanning' ? (
                   <div className="proporter-loading">
-                    <span>🔍 Scanning Jamf instance...</span>
+                    <div className="export-progress">
+                      <div className="progress-spinner"></div>
+                      <div className="progress-text">
+                        <span className="progress-title">🔍 Scanning Jamf Instance</span>
+                        <span className="progress-detail">Discovering resources and dependencies...</span>
+                      </div>
+                    </div>
+                  </div>
+                ) : loading && exportPhase === 'downloading' ? (
+                  <div className="proporter-loading">
+                    <div className="export-progress">
+                      <div className="progress-spinner"></div>
+                      <div className="progress-text">
+                        <span className="progress-title">📦 Generating Export</span>
+                        <span className="progress-detail">
+                          Processing {instanceSummary.reduce((sum, s) => sum + s.count, 0)} resources...
+                        </span>
+                        <span className="progress-hint">Downloading scripts and configuration profiles</span>
+                      </div>
+                    </div>
                   </div>
                 ) : error ? (
                   <div className="proporter-error">
@@ -352,6 +378,9 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
                   <>
                     <div className="instance-summary">
                       <h4>📊 Instance Summary</h4>
+                      <div className="summary-total">
+                        {instanceSummary.reduce((sum, s) => sum + s.count, 0)} total resources
+                      </div>
                       {instanceSummary.map((summary) => (
                         <div key={summary.resource_type} className="summary-item">
                           <span className="summary-type">{summary.resource_type}</span>
@@ -363,7 +392,7 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
                       <span>📦 Package files (.pkg/.dmg) are NOT downloaded due to size. You must manually add them to support_files/packages/</span>
                     </div>
                     <button className="download-btn" onClick={handleDownloadInstanceZip} disabled={loading}>
-                      {loading ? '⏳ Preparing ZIP...' : '⬇️ Download Complete Export (ZIP)'}
+                      ⬇️ Download Complete Export (ZIP)
                     </button>
                   </>
                 )}
