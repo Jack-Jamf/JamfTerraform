@@ -53,7 +53,6 @@ class HCLGenerator:
     def _generate_app_catalog_hcl(self, app_data: dict, resource_name: Optional[str] = None) -> str:
         """
         Generate HCL for a Jamf App Catalog app (App Installer).
-        Note: Current Terraform provider support for App Installers is limited.
         """
         name = app_data.get('name', 'Unnamed App')
         tf_name = resource_name or self._sanitize_name(name)
@@ -62,14 +61,34 @@ class HCLGenerator:
         version = app_details.get('latestVersion', '')
         
         hcl = [f'# Jamf App Catalog: {name}']
-        hcl.append(f'# Bundle ID: {bundle_id}')
-        hcl.append(f'# Version: {version}')
-        hcl.append(f'# Note: App Installers resource is not yet fully supported in Terraform provider')
+        if bundle_id:
+            hcl.append(f'# Bundle ID: {bundle_id}')
+        if version:
+            hcl.append(f'# Version: {version}')
+        
         hcl.append(f'resource "jamfpro_app_installer" "{tf_name}" {{')
-        hcl.append(f'  name                  = "{name}"')
-        hcl.append(f'  target_group_id       = {app_data.get("smartGroup", {}).get("id", "null")}')
-        hcl.append(f'  deployment_type       = "{app_data.get("deploymentType", "SELF_SERVICE")}"')
-        hcl.append(f'  update_behavior       = "{app_data.get("updateBehavior", "AUTOMATIC")}"')
+        hcl.append(f'  name            = "{name}"')
+        hcl.append(f'  enabled         = {str(app_data.get("enabled", True)).lower()}')
+        hcl.append(f'  deployment_type = "{app_data.get("deploymentType", "SELF_SERVICE")}"')
+        hcl.append(f'  update_behavior = "{app_data.get("updateBehavior", "AUTOMATIC")}"')
+        
+        # Category (required, -1 if not set)
+        category_id = app_data.get('category', {}).get('id', -1)
+        hcl.append(f'  category_id     = "{category_id}"')
+        
+        # Site (required, -1 if not set)
+        site_id = app_data.get('site', {}).get('id', -1)
+        hcl.append(f'  site_id         = "{site_id}"')
+        
+        # Smart group (required, default to 1 = All Managed Clients)
+        smart_group = app_data.get('smartGroup', {})
+        smart_group_id = smart_group.get('id', 1)
+        if smart_group_id and smart_group.get('name'):
+            sg_name = self._sanitize_name(smart_group['name'])
+            hcl.append(f'  smart_group_id  = jamfpro_computer_group_smart.{sg_name}.id')
+        else:
+            hcl.append(f'  smart_group_id  = "1"  # All Managed Clients')
+        
         hcl.append('}')
         
         return '\n'.join(hcl)

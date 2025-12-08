@@ -8,9 +8,9 @@ class DependencyResolver:
     
     # Define which resource types can have dependencies on other types
     DEPENDENCY_MAP = {
-        'policies': ['categories', 'scripts', 'packages', 'buildings', 'computer_groups'],
+        'policies': ['categories', 'scripts', 'packages', 'buildings', 'smart-groups'],
         'config-profiles': ['categories'],
-        'smart-groups': ['computer_groups'],  # Can reference other groups in criteria
+        'smart-groups': ['smart-groups'],  # Can reference other groups in criteria
     }
     
     def __init__(self):
@@ -83,14 +83,14 @@ class DependencyResolver:
                             if bldg_id and bldg_id not in [-1, 0]:
                                 deps['buildings'].append(bldg_id)
                 
-                # Computer Groups
+                # Computer Groups (normalize to smart-groups type)
                 computer_groups = scope.get('computer_groups', [])
                 if isinstance(computer_groups, list):
                     for group in computer_groups:
                         if isinstance(group, dict) and 'id' in group:
                             grp_id = int(group['id']) if group['id'] not in ['', None] else None
                             if grp_id and grp_id not in [-1, 0]:
-                                deps['computer_groups'].append(grp_id)
+                                deps['smart-groups'].append(grp_id)
         
         return deps
     
