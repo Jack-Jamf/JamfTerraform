@@ -38,11 +38,3 @@ export interface JamfCredentials {
   password: string;
 }
 
-export type AuthStatus = 'idle' | 'testing' | 'success' | 'error';
-
-export interface AuthState {
-  credentials: JamfCredentials | null;
-  status: AuthStatus;
-  message?: string;
-}
-

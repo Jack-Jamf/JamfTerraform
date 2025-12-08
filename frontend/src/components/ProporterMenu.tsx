@@ -39,7 +39,6 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
   const [selectedResource, setSelectedResource] = useState<JamfResource | null>(null);
   const [resources, setResources] = useState<JamfResource[]>([]);
   const [instanceSummary, setInstanceSummary] = useState<JamfInstanceSummary[]>([]);
-  const [instanceHCL, setInstanceHCL] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -119,9 +118,39 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
     
     if (response.success) {
       setInstanceSummary(response.summary);
-      setInstanceHCL(response.hcl);
     } else {
       setError(response.error || 'Failed to export instance');
+    }
+  };
+
+  // Download all resources from instance summary as ZIP with support files
+  const handleDownloadInstanceZip = async () => {
+    if (!credentials || instanceSummary.length === 0) return;
+    
+    setLoading(true);
+    
+    // Collect all resource IDs from the summary
+    const allResources: Array<{ type: string; id: number }> = [];
+    for (const summary of instanceSummary) {
+      for (const item of summary.items) {
+        allResources.push({ type: summary.resource_type, id: item.id });
+      }
+    }
+    
+    const blob = await ExecutionService.bulkExport(credentials, allResources, true);
+    setLoading(false);
+    
+    if (blob) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'jamf_instance_export.zip';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } else {
+      setError('Failed to download instance export');
     }
   };
 
@@ -158,18 +187,6 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
 
   const handleResourceClick = (resource: JamfResource) => {
     setSelectedResource(resource);
-  };
-
-  const handleDownloadHCL = () => {
-    const blob = new Blob([instanceHCL], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'jamf_instance.tf';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
   };
 
   return (
@@ -342,12 +359,11 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
                         </div>
                       ))}
                     </div>
-                    <div className="hcl-preview">
-                      <h4>📝 Generated HCL</h4>
-                      <pre>{instanceHCL}</pre>
+                    <div className="package-warning-banner" style={{ marginBottom: '12px' }}>
+                      <span>📦 Package files (.pkg/.dmg) are NOT downloaded due to size. You must manually add them to support_files/packages/</span>
                     </div>
-                    <button className="download-btn" onClick={handleDownloadHCL}>
-                      ⬇️ Download jamf_instance.tf
+                    <button className="download-btn" onClick={handleDownloadInstanceZip} disabled={loading}>
+                      {loading ? '⏳ Preparing ZIP...' : '⬇️ Download Complete Export (ZIP)'}
                     </button>
                   </>
                 )}
