@@ -1,9 +1,10 @@
-"""LLM service for interacting with Gemini API."""
+"""LLMService for interacting with Gemini API."""
 import google.generativeai as genai
 import json
 from config import GEMINI_API_KEY, GEMINI_MODEL, SYSTEM_PROMPT
 from schemas import UserIntent, PolicyIntent, ScriptIntent, CategoryIntent, PackageIntent, SmartGroupIntent, StaticGroupIntent, AppInstallerIntent, RawHCLIntent
 from hcl_generator import HCLGenerator
+from intent_validator import IntentValidator
 
 
 class LLMService:
@@ -16,6 +17,7 @@ class LLMService:
         
         genai.configure(api_key=GEMINI_API_KEY)
         self.app_catalog = self._load_app_catalog()
+        self.validator = IntentValidator(self.app_catalog)
         
         # Inject the full App Catalog into the System Prompt for Semantic Search
         catalog_str = "\n".join([f'- "{title}"' for title in self.app_catalog])
@@ -34,23 +36,6 @@ class LLMService:
                 return json.load(f)
         except Exception:
             return []
-
-    def _validate_app_installer(self, intent: AppInstallerIntent) -> str | None:
-        """
-        Validate that the requested app name exists in the catalog.
-        Returns None if valid, or a warning/error message if invalid.
-        """
-        if not self.app_catalog:
-            return None # Skip validation if catalog not loaded
-            
-        if intent.name not in self.app_catalog:
-            # Fuzzy match suggestion
-            import difflib
-            suggestions = difflib.get_close_matches(intent.name, self.app_catalog, n=3, cutoff=0.4)
-            suggestion_msg = f" Did you mean: {', '.join(suggestions)}?" if suggestions else ""
-            return f"I cannot verify '{intent.name}' in the Jamf App Catalog.{suggestion_msg} Please use an exact title from the official list."
-        
-        return None
 
     def generate_hcl(self, user_prompt: str, context: str | None = None) -> str:
         """
@@ -84,16 +69,15 @@ class LLMService:
         
         # Case 2: Intent Found
         if parsed.intent:
+            # Validate Intent using IntentValidator
+            validation_error = self.validator.validate(parsed)
+            if validation_error:
+                return f"# NOTE: {validation_error}"
+
             # Handle Hybrid/custom mode
             if isinstance(parsed.intent, RawHCLIntent):
                 raw_hcl = f"# Generated via Hybrid Mode (Raw AI Output) - Verify syntax!\n{parsed.intent.hcl_body}"
                 return self._wrap_with_provider(raw_hcl)
-
-            # Validation for App Installers
-            if isinstance(parsed.intent, AppInstallerIntent):
-                validation_error = self._validate_app_installer(parsed.intent)
-                if validation_error:
-                    return f"# NOTE: {validation_error}"
 
             data = self._convert_intent_to_data(parsed.intent)
             
@@ -139,11 +123,6 @@ class LLMService:
                 }
             if intent.payloads.scripts:
                 data['scripts'] = [s.model_dump(exclude_none=True) for s in intent.payloads.scripts]
-            # Maintenance logic? (HCLGen doesn't seem to generate maintenance payload? Wait.)
-            # I removed maintenance from _generate_policy_hcl check in my previous Step.
-            # I should verify if HCLGen supports maintenance. 
-            # Step 1143 showed packages and scripts logic. It did NOT show maintenance logic.
-            # So I'll ignore maintenance for now or add it later.
             
         elif isinstance(intent, ScriptIntent):
             data['name'] = intent.name
