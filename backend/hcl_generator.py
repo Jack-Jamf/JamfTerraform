@@ -207,6 +207,14 @@ class HCLGenerator:
                         hcl.append(f'      id       = {script.get("id")}')
                         
                     hcl.append(f'      priority = "{script.get("priority", "After")}"')
+                    
+                    for i in range(4, 12):
+                        param_key = f'parameter{i}'
+                        if param_key in script and script[param_key]:
+                            # Escape quotes in parameter values
+                            param_value = script[param_key].replace('"', '\\"')
+                            hcl.append(f'      {param_key} = "{param_value}"')
+                    
                     hcl.append('    }')
             hcl.append('  }')
         
