@@ -2,7 +2,7 @@
 import google.generativeai as genai
 import json
 from config import GEMINI_API_KEY, GEMINI_MODEL, SYSTEM_PROMPT
-from schemas import UserIntent, PolicyIntent, ScriptIntent, CategoryIntent, PackageIntent, SmartGroupIntent, StaticGroupIntent, AppInstallerIntent
+from schemas import UserIntent, PolicyIntent, ScriptIntent, CategoryIntent, PackageIntent, SmartGroupIntent, StaticGroupIntent, AppInstallerIntent, RawHCLIntent
 from hcl_generator import HCLGenerator
 
 
@@ -54,6 +54,11 @@ class LLMService:
         
         # Case 2: Intent Found
         if parsed.intent:
+            # Handle Hybrid/custom mode
+            if isinstance(parsed.intent, RawHCLIntent):
+                raw_hcl = f"# Generated via Hybrid Mode (Raw AI Output) - Verify syntax!\n{parsed.intent.hcl_body}"
+                return self._wrap_with_provider(raw_hcl)
+
             data = self._convert_intent_to_data(parsed.intent)
             
             # Map singular type to plural key expected by HCLGenerator

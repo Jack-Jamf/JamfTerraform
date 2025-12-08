@@ -96,12 +96,19 @@ class AppInstallerIntent(BaseIntent):
     bundle_id: Optional[str] = None
     version: Optional[str] = None
 
+class RawHCLIntent(BaseModel):
+    # Does not inherit from BaseIntent to avoid resource_type strict literal constraint if we want more flexibility, 
+    # but for consistent parsing it helps. Let's make it match.
+    # Actually BaseIntent has Literal[...] which is strict. 
+    # We should add 'custom' to BaseIntent Literal first.
+    resource_type: Literal['custom']
+    hcl_body: str = Field(..., description="The complete HCL code block for the resource.")
+    description: Optional[str] = None
+
 # --- Master Intent ---
 class UserIntent(BaseModel):
     """
     The structured intent extracted from the user's prompt.
-    If the user's request is incomplete or invalid, the validation error
-    will guide the bot's next question.
     """
-    intent: Optional[Union[PolicyIntent, ScriptIntent, CategoryIntent, PackageIntent, SmartGroupIntent, StaticGroupIntent, AppInstallerIntent]] = None
+    intent: Optional[Union[PolicyIntent, ScriptIntent, CategoryIntent, PackageIntent, SmartGroupIntent, StaticGroupIntent, AppInstallerIntent, RawHCLIntent]] = None
     missing_info_question: Optional[str] = Field(None, description="If intent is incomplete/invalid, ask this question.")
