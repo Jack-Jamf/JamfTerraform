@@ -127,10 +127,12 @@ class LLMService:
             
         elif isinstance(intent, AppInstallerIntent):
             data['name'] = intent.name
-            data['app'] = {
-                'bundleId': 'com.example.app',
-                'latestVersion': '1.0.0'
-            }
+            data['app'] = {}
+            if intent.bundle_id:
+                data['app']['bundleId'] = intent.bundle_id
+            if intent.version:
+                data['app']['latestVersion'] = intent.version
+            
             # Match API structure expected by HCLGenerator
             data['enabled'] = intent.enabled
             data['deploymentType'] = intent.deployment_type

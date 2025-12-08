@@ -93,6 +93,8 @@ class AppInstallerIntent(BaseIntent):
     category_id: int = -1
     site_id: int = -1
     smart_group_id: int = 1
+    bundle_id: Optional[str] = None
+    version: Optional[str] = None
 
 # --- Master Intent ---
 class UserIntent(BaseModel):
