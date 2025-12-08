@@ -70,8 +70,15 @@ const Chat: React.FC = () => {
     setIsLoading(true);
 
     try {
+      // Format conversation history as context
+      const context = messages
+        .slice(-20) // Keep last 20 messages for context window efficiency
+        .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
+        .join('\n\n');
+
       const response = await ExecutionService.generateHCL({
         prompt: userMessage.content,
+        context: context.length > 0 ? context : undefined,
       });
 
       const assistantMessage: Message = {
@@ -93,7 +100,7 @@ const Chat: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading]);
+  }, [isLoading, messages]);
 
   const handleRecipeClick = (recipe: CookbookModule) => {
     sendMessage(recipe.prompt);

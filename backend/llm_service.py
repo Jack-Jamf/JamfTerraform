@@ -29,7 +29,7 @@ class LLMService:
         # Construct the full prompt
         full_prompt = user_prompt
         if context:
-            full_prompt = f"Context:\n{context}\n\nRequest:\n{user_prompt}"
+            full_prompt = f"Previous Conversation History:\n{context}\n\nCurrent Request:\n{user_prompt}\n\n[SYSTEM REMINDER]: Continue to output ONLY JSON. Use the Valid Intents or missing_info_question."
         
         # Generate content (JSON)
         response = self.model.generate_content(full_prompt)
