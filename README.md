@@ -210,6 +210,14 @@ Generate HCL from prompt.
 - ✅ No sensitive data in HCL output
 - ✅ Input validation with Pydantic
 
+## 🛡️ Validation & Safety
+
+The backend now includes a strict **Intent Validator** to ensure generated configurations are safe and accurate:
+
+- **Safe Scoping**: "All Computers" targeting is blocked by default to prevent accidental mass-deployments. You must target specific groups or IDs.
+- **App Catalog Accuracy**: App Installer names are validated against the official Jamf App Catalog. Fuzzy matching suggests corrections for typos (e.g. "Google Chrm" -> "Google Chrome").
+- **Script Safety**: Scripts are scanned for empty content and common dangerous commands (e.g. `rm -rf /`).
+
 ## 🤝 Contributing
 
 This is a workspace project. Follow the workspace rules:
