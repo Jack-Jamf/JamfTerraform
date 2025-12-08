@@ -144,14 +144,24 @@ class DependencyResolver:
         # First pass: catalog all resources
         for res_type, resources in resources_by_type.items():
             for resource in resources:
-                key = (res_type, resource.get('id'))
+                # Extract ID - try direct id first, then general.id (policies, profiles)
+                res_id = resource.get('id')
+                if res_id is None:
+                    res_id = resource.get('general', {}).get('id')
+                
+                key = (res_type, res_id)
                 resource_map[key] = resource
                 in_degree[key] = 0
         
         # Second pass: build edges based on dependencies
         for res_type, resources in resources_by_type.items():
             for resource in resources:
-                res_key = (res_type, resource.get('id'))
+                # Extract ID - try direct id first, then general.id (policies, profiles)
+                res_id = resource.get('id')
+                if res_id is None:
+                    res_id = resource.get('general', {}).get('id')
+                
+                res_key = (res_type, res_id)
                 deps = self.extract_dependencies(res_type, resource)
                 
                 for dep_type, dep_ids in deps.items():
