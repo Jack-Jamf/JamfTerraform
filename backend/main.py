@@ -10,11 +10,13 @@ from jamf_client import JamfClient
 from dependency_resolver import DependencyResolver
 from hcl_generator import HCLGenerator
 from recursive_fetcher import RecursiveFetcher
+from support_file_handler import SupportFileHandler
 from collections import defaultdict
 import json
 import zipfile
 import io
 from pathlib import Path
+
 
 
 app = FastAPI(title="JamfTerraform Backend", version="1.0.0")
@@ -287,6 +289,9 @@ async def get_resource_detail(request: JamfResourceDetailRequest):
 async def bulk_export_resources(request: BulkExportRequest):
     """
     Export multiple resources and their dependencies as a ZIP file.
+    
+    Includes support files (scripts, config profile payloads) as separate files
+    in a support_files/ directory, referenced via Terraform's file() function.
     """
     try:
         client = JamfClient(
@@ -298,7 +303,12 @@ async def bulk_export_resources(request: BulkExportRequest):
         
         fetcher = RecursiveFetcher(client)
         resolver = DependencyResolver()
-        hcl_gen = HCLGenerator()
+        
+        # Initialize support file handler for downloading scripts and profiles
+        support_handler = SupportFileHandler(client)
+        
+        # HCL generator with support file handler for file() references
+        hcl_gen = HCLGenerator(support_file_handler=support_handler)
         
         # Deduplication cache: (type, id) -> data
         all_unique_resources = {}
@@ -320,15 +330,30 @@ async def bulk_export_resources(request: BulkExportRequest):
                 print(f"Error fetching {res.type} {res.id} for bulk export: {e}")
                 continue
 
-        # 2. Prepare for sorting
+        # 2. Process support files (download scripts and profile payloads)
+        for (r_type, r_id_str), (orig_type, r_data) in all_unique_resources.items():
+            r_id = int(r_id_str) if r_id_str.isdigit() else None
+            if r_id is None:
+                continue
+                
+            try:
+                if orig_type == 'scripts':
+                    await support_handler.process_script(r_id, r_data)
+                elif orig_type == 'config-profiles':
+                    await support_handler.process_config_profile(r_id, r_data)
+            except Exception as e:
+                print(f"Error processing support file for {orig_type} {r_id}: {e}")
+                continue
+
+        # 3. Prepare for sorting
         resources_by_type = defaultdict(list)
         for (r_type, _), (orig_type, r_data) in all_unique_resources.items():
             resources_by_type[orig_type].append(r_data)
 
-        # 3. Topological Sort
+        # 4. Topological Sort
         sorted_tuples = resolver.topological_sort(resources_by_type)
         
-        # 4. Organize content by file type
+        # 5. Organize content by file type
         files_content = defaultdict(list)
         
         for r_type, r_data in sorted_tuples:
@@ -336,37 +361,121 @@ async def bulk_export_resources(request: BulkExportRequest):
             filename = f"{r_type}.tf"
             files_content[filename].append(chunk)
 
-        # 5. Create ZIP
+        # 6. Create ZIP with support files
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-            # Write resource files
+            # Write resource HCL files
             for filename, blocks in files_content.items():
-                content = "\\n\\n".join(blocks)
+                content = "\n\n".join(blocks)
                 zip_file.writestr(filename, content)
             
+            # Write support files (scripts and profiles)
+            support_files_count = support_handler.write_files_to_zip(zip_file)
+            
+            # Create empty packages directory with .gitkeep for users to add packages
+            zip_file.writestr("support_files/packages/.gitkeep", 
+                            "# Place package files (.pkg, .dmg) here\n")
+            
             # Write provider configuration
-            provider_hcl = f"""
-terraform {{
+            provider_hcl = f'''terraform {{
   required_providers {{
     jamfpro = {{
-      source = "jamf/jamfpro"
-      version = "~> 0.4.0"
+      source  = "deploymenttheory/jamfpro"
+      version = "~> 0.5.0"
     }}
   }}
 }}
 
 provider "jamfpro" {{
-  instance_url = "{request.credentials.url}"
+  jamfpro_instance_fqdn = "{request.credentials.url.replace('https://', '').replace('http://', '').rstrip('/')}"
+  # Authentication - configure via environment variables:
+  # export JAMFPRO_BASIC_AUTH_USERNAME="your-username"
+  # export JAMFPRO_BASIC_AUTH_PASSWORD="your-password"
+  # Or use client credentials:
+  # export JAMFPRO_CLIENT_ID="your-client-id"
+  # export JAMFPRO_CLIENT_SECRET="your-client-secret"
 }}
-"""
+'''
             zip_file.writestr("provider.tf", provider_hcl)
             
-            readme = """# Jamf Pro Terraform Export
+            # Get summary of support files
+            support_summary = support_handler.get_files_summary()
+            
+            # Build README with support files info
+            readme = f'''# Jamf Pro Terraform Export
+
 Generated by JamfTerraform Proporter.
-1. Configure auth in provider.tf
-2. terraform init
-3. terraform plan
-"""
+
+## Quick Start
+
+1. **Configure Authentication**
+   
+   Set environment variables for authentication:
+   ```bash
+   export JAMFPRO_BASIC_AUTH_USERNAME="your-username"
+   export JAMFPRO_BASIC_AUTH_PASSWORD="your-password"
+   ```
+   
+   Or use client credentials:
+   ```bash
+   export JAMFPRO_CLIENT_ID="your-client-id"
+   export JAMFPRO_CLIENT_SECRET="your-client-secret"
+   ```
+
+2. **Initialize Terraform**
+   ```bash
+   terraform init
+   ```
+
+3. **Review the Plan**
+   ```bash
+   terraform plan
+   ```
+
+4. **Apply Changes**
+   ```bash
+   terraform apply
+   ```
+
+## Support Files
+
+This export includes {support_summary['total_count']} support files:
+
+### Scripts ({len(support_summary['scripts'])} files)
+{chr(10).join([f"- `{s['path']}`" for s in support_summary['scripts']]) or "- None"}
+
+### Configuration Profiles ({len(support_summary['profiles'])} files)
+{chr(10).join([f"- `{p['path']}`" for p in support_summary['profiles']]) or "- None"}
+
+### Packages
+
+Package files (.pkg, .dmg) are **not** automatically downloaded due to their large size.
+You must manually obtain package files from your Jamf Pro server and place them in:
+`support_files/packages/`
+
+## File Structure
+
+```
+.
+├── provider.tf          # Terraform provider configuration
+├── categories.tf        # Category resources
+├── scripts.tf           # Script resources
+├── packages.tf          # Package resources
+├── config-profiles.tf   # Configuration profile resources
+├── policies.tf          # Policy resources
+├── README.md            # This file
+└── support_files/
+    ├── scripts/         # Script files (.sh, .zsh, .py, etc.)
+    ├── profiles/        # Configuration profiles (.mobileconfig)
+    └── packages/        # Place package files here manually
+```
+
+## Notes
+
+- Scripts and configuration profiles use `file()` references to local files
+- This ensures proper handling of special characters and multi-line content
+- All resources maintain their dependency relationships via Terraform references
+'''
             zip_file.writestr("README.md", readme)
 
         zip_buffer.seek(0)
@@ -379,3 +488,4 @@ Generated by JamfTerraform Proporter.
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+

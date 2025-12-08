@@ -1,12 +1,23 @@
 """HCL generator for Jamf Pro resources."""
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, TYPE_CHECKING
 import json
+
+if TYPE_CHECKING:
+    from support_file_handler import SupportFileHandler
 
 
 class HCLGenerator:
     """Generates Terraform HCL from Jamf Pro resource data."""
     
-    def __init__(self):
+    def __init__(self, support_file_handler: Optional['SupportFileHandler'] = None):
+        """
+        Initialize the HCL generator.
+        
+        Args:
+            support_file_handler: Optional handler for file references. When provided,
+                                  scripts and profiles will use file() references.
+        """
+        self.support_file_handler = support_file_handler
         self.templates = {
             'policies': self._generate_policy_hcl,
             'scripts': self._generate_script_hcl,
@@ -186,38 +197,101 @@ class HCLGenerator:
         """Generate HCL for a Jamf Pro script."""
         name = script_data.get('name', 'Unnamed Script')
         tf_name = resource_name or self._sanitize_name(name)
+        script_id = script_data.get('id')
         
         hcl = [f'resource "jamfpro_script" "{tf_name}" {{']
-        hcl.append(f'  name          = "{name}"')
+        hcl.append(f'  name     = "{name}"')
+        hcl.append(f'  priority = "{script_data.get("priority", "BEFORE")}"')
         
-        if 'script_contents' in script_data:
-            # Escape the script contents
+        # Check if we have a file reference from support_file_handler
+        file_ref = None
+        if self.support_file_handler and script_id:
+            file_ref = self.support_file_handler.get_terraform_file_reference('scripts', script_id)
+        
+        if file_ref:
+            # Use file() reference to external file
+            hcl.append(f'  script_contents = {file_ref}')
+        elif 'script_contents' in script_data:
+            # Fallback: inline content with escaping
             script_contents = script_data['script_contents'].replace('\\', '\\\\').replace('"', '\\"').replace('$', '\\$')
             hcl.append(f'  script_contents = "{script_contents}"')
+        else:
+            hcl.append('  script_contents = "# Script contents not available"')
         
+        # Category reference
         if 'category' in script_data:
             category = script_data['category']
             if isinstance(category, dict) and category.get('id', -1) not in [-1, 0]:
                 cat_name = self._sanitize_name(category.get('name', ''))
                 hcl.append(f'  category_id = jamfpro_category.{cat_name}.id')
         
+        # Optional fields
+        if script_data.get('info'):
+            info = script_data['info'].replace('"', '\\"')
+            hcl.append(f'  info  = "{info}"')
+        
+        if script_data.get('notes'):
+            notes = script_data['notes'].replace('"', '\\"')
+            hcl.append(f'  notes = "{notes}"')
+        
+        if script_data.get('os_requirements'):
+            hcl.append(f'  os_requirements = "{script_data["os_requirements"]}"')
+        
+        # Script parameters (4-11)
+        for i in range(4, 12):
+            param_key = f'parameter{i}'
+            if script_data.get(param_key):
+                hcl.append(f'  {param_key} = "{script_data[param_key]}"')
+        
         hcl.append('}')
         return '\n'.join(hcl)
     
     def _generate_package_hcl(self, package_data: dict, resource_name: Optional[str] = None) -> str:
-        """Generate HCL for a Jamf Pro package."""
+        """
+        Generate HCL for a Jamf Pro package.
+        
+        Note: Package files (.pkg, .dmg) are typically very large and are NOT downloaded.
+        The user must manually place the package file in the support_files/packages/ directory.
+        """
         name = package_data.get('name', 'Unnamed Package')
         tf_name = resource_name or self._sanitize_name(name)
+        filename = package_data.get('filename', f'{tf_name}.pkg')
         
-        hcl = [f'resource "jamfpro_package" "{tf_name}" {{']
-        hcl.append(f'  package_name = "{name}"')
+        # Build the expected local path for the package file
+        package_path = f'${{path.module}}/support_files/packages/{filename}'
         
-        if 'filename' in package_data:
-            hcl.append(f'  filename = "{package_data["filename"]}"')
+        hcl = [f'# Package: {name}']
+        hcl.append(f'# NOTE: You must manually place the package file at: support_files/packages/{filename}')
+        hcl.append(f'resource "jamfpro_package" "{tf_name}" {{')
+        hcl.append(f'  package_name        = "{name}"')
+        hcl.append(f'  package_file_source = "{package_path}"')
         
-        if 'category' in package_data:
+        # Required fields from provider schema
+        hcl.append(f'  priority              = {package_data.get("priority", 10)}')
+        hcl.append(f'  reboot_required       = {str(package_data.get("reboot_required", False)).lower()}')
+        hcl.append(f'  fill_user_template    = {str(package_data.get("fill_user_template", False)).lower()}')
+        hcl.append(f'  fill_existing_users   = {str(package_data.get("fill_existing_users", False)).lower()}')
+        hcl.append(f'  os_install            = {str(package_data.get("os_install", False)).lower()}')
+        hcl.append(f'  suppress_updates      = {str(package_data.get("suppress_updates", False)).lower()}')
+        hcl.append(f'  suppress_from_dock    = {str(package_data.get("suppress_from_dock", False)).lower()}')
+        hcl.append(f'  suppress_eula         = {str(package_data.get("suppress_eula", False)).lower()}')
+        hcl.append(f'  suppress_registration = {str(package_data.get("suppress_registration", False)).lower()}')
+        
+        # Optional fields
+        if package_data.get('category'):
             cat_name = self._sanitize_name(package_data['category'])
-            hcl.append(f'  category = "{cat_name}"')
+            hcl.append(f'  category_id = jamfpro_category.{cat_name}.id')
+        
+        if package_data.get('info'):
+            info = package_data['info'].replace('"', '\\"')
+            hcl.append(f'  info  = "{info}"')
+        
+        if package_data.get('notes'):
+            notes = package_data['notes'].replace('"', '\\"')
+            hcl.append(f'  notes = "{notes}"')
+        
+        if package_data.get('os_requirements'):
+            hcl.append(f'  os_requirements = "{package_data["os_requirements"]}"')
         
         hcl.append('}')
         return '\n'.join(hcl)
@@ -258,28 +332,67 @@ class HCLGenerator:
         general = profile_data.get('general', {})
         name = general.get('name', 'Unnamed Profile')
         tf_name = resource_name or self._sanitize_name(name)
+        profile_id = general.get('id') or profile_data.get('id')
         
         hcl = [f'resource "jamfpro_macos_configuration_profile_plist" "{tf_name}" {{']
-        hcl.append(f'  name = "{name}"')
+        hcl.append(f'  name                = "{name}"')
         
-        if 'description' in general:
-            hcl.append(f'  description = "{general["description"]}"')
+        # Required fields
+        description = general.get('description', '')
+        if description:
+            desc_escaped = description.replace('"', '\\"').replace('\n', '\\n')
+            hcl.append(f'  description         = "{desc_escaped}"')
+        else:
+            hcl.append(f'  description         = "Exported from Jamf Pro"')
         
-        # Category
+        # Distribution method and level
+        dist_method = general.get('distribution_method', 'Install Automatically')
+        hcl.append(f'  distribution_method = "{dist_method}"')
+        
+        level = general.get('level', 'System')
+        # Normalize level value
+        if level.lower() in ['computer', 'system', 'device']:
+            level = 'System'
+        elif level.lower() == 'user':
+            level = 'User'
+        hcl.append(f'  level               = "{level}"')
+        
+        # Optional settings
+        hcl.append(f'  redeploy_on_update  = "{general.get("redeploy_on_update", "Newly Assigned")}"')
+        hcl.append(f'  user_removable      = {str(general.get("user_removable", False)).lower()}')
+        
+        # Category reference
         category = general.get('category', {})
         if isinstance(category, dict) and category.get('id', -1) not in [-1, 0]:
             cat_name = self._sanitize_name(category.get('name', ''))
-            hcl.append(f'  category_id = jamfpro_category.{cat_name}.id')
+            hcl.append(f'  category_id         = jamfpro_category.{cat_name}.id')
         
-        if 'payloads' in general:
-            hcl.append('  payloads = <<-EOF')
-            # Indent each line of the payload for better readability
+        # Payloads - check for file reference first
+        file_ref = None
+        if self.support_file_handler and profile_id:
+            file_ref = self.support_file_handler.get_terraform_file_reference('config-profiles', profile_id)
+        
+        if file_ref:
+            # Use file() reference to external .mobileconfig file
+            hcl.append(f'  payloads            = {file_ref}')
+        elif 'payloads' in general:
+            # Fallback: inline heredoc (may have issues with special characters)
+            hcl.append('  payloads            = <<-EOF')
             payload_lines = general['payloads'].splitlines()
             for line in payload_lines:
                 hcl.append(f'    {line}')
             hcl.append('  EOF')
         else:
             hcl.append('  # Note: payloads not found or require manual configuration')
+            hcl.append('  payloads            = ""')
+        
+        # Scope block (minimal default)
+        scope = profile_data.get('scope', {})
+        hcl.append('')
+        hcl.append('  scope {')
+        hcl.append(f'    all_computers = {str(scope.get("all_computers", True)).lower()}')
+        hcl.append(f'    all_jss_users = {str(scope.get("all_jss_users", False)).lower()}')
+        hcl.append('  }')
         
         hcl.append('}')
         return '\n'.join(hcl)

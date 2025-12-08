@@ -21,7 +21,7 @@ const RESOURCE_TYPES: ResourceType[] = [
   { id: 'smart-groups', name: 'Smart Groups', icon: '👥', description: 'Import computer/mobile smart groups' },
   { id: 'config-profiles', name: 'Configuration Profiles', icon: '⚙️', description: 'Import macOS/iOS configuration profiles' },
   { id: 'scripts', name: 'Scripts', icon: '📜', description: 'Import scripts from Jamf Pro' },
-  { id: 'packages', name: 'Packages', icon: '📦', description: 'Import package definitions' },
+  { id: 'packages', name: 'Packages', icon: '📦', description: 'Import package metadata (files must be added manually)' },
   { id: 'jamf-app-catalog', name: 'Jamf App Catalog', icon: '🍎', description: 'Import Jamf App Catalog installers' },
 ];
 
@@ -56,6 +56,9 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
     else newSel.add(key);
     setSelection(newSel);
   };
+
+  // Check if any packages are in the current selection
+  const hasPackagesSelected = Array.from(selection).some(key => key.startsWith('packages:'));
 
   const handleBulkDownload = async () => {
     if (!credentials || selection.size === 0) return;
@@ -219,6 +222,11 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
           
           {isSelecting && selection.size > 0 && (
             <div className="bulk-actions-bar">
+               {hasPackagesSelected && (
+                 <div className="package-warning-banner">
+                   <span>📦 Package files (.pkg/.dmg) are NOT downloaded due to size. You must manually add them to support_files/packages/</span>
+                 </div>
+               )}
                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <span className="selection-count">{selection.size} item{selection.size !== 1 ? 's' : ''}</span>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', cursor: 'pointer', color: 'var(--color-text-secondary)' }}>
