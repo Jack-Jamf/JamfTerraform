@@ -314,9 +314,12 @@ async def bulk_export_resources(request: BulkExportRequest):
         all_unique_resources = {}
 
         # 1. Fetch all requested resources + dependencies
-        for res in request.resources:
+        print(f"[BULK EXPORT] Received {len(request.resources)} resources to export")
+        for idx, res in enumerate(request.resources):
+            print(f"[BULK EXPORT] Processing {idx+1}/{len(request.resources)}: {res.type} ID {res.id}")
             try:
                 fetched = await fetcher.fetch_all(res.type, res.id, recursive=request.include_dependencies)
+                print(f"[BULK EXPORT] Fetched {len(fetched)} items for {res.type} {res.id}")
                 for r_type, r_data in fetched:
                     r_id = r_data.get('id')
                     if r_id is None:
@@ -330,6 +333,7 @@ async def bulk_export_resources(request: BulkExportRequest):
                 print(f"Error fetching {res.type} {res.id} for bulk export: {e}")
                 continue
 
+        print(f"[BULK EXPORT] Total unique resources after fetching: {len(all_unique_resources)}")
         # 2. Process support files (download scripts and profile payloads)
         for (r_type, r_id_str), (orig_type, r_data) in all_unique_resources.items():
             r_id = int(r_id_str) if r_id_str.isdigit() else None
