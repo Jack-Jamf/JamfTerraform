@@ -26,6 +26,7 @@ class HCLGenerator:
             'buildings': self._generate_building_hcl,
             'config-profiles': self._generate_config_profile_hcl,
             'smart-groups': self._generate_computer_group_hcl,
+            'static-groups': self._generate_computer_group_hcl,
             'computer_groups': self._generate_computer_group_hcl,
             'jamf-app-catalog': self._generate_app_catalog_hcl,
         }

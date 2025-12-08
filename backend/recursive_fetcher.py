@@ -77,7 +77,7 @@ class RecursiveFetcher:
             return await self.client.get_category_detail(resource_id)
         elif resource_type == "buildings":
             return await self.client.get_building_detail(resource_id)
-        elif resource_type == "computer_groups" or resource_type == "smart-groups":
+        elif resource_type == "computer_groups" or resource_type == "smart-groups" or resource_type == "static-groups":
             return await self.client.get_computer_group_detail(resource_id)
         # Add categories and others if needed
         # Categories often don't have a specific detail endpoint used here, 

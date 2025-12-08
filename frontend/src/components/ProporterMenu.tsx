@@ -19,6 +19,7 @@ interface ResourceType {
 const RESOURCE_TYPES: ResourceType[] = [
   { id: 'policies', name: 'Policies', icon: '📋', description: 'Import Jamf Pro policies' },
   { id: 'smart-groups', name: 'Smart Groups', icon: '👥', description: 'Import computer/mobile smart groups' },
+  { id: 'static-groups', name: 'Static Groups', icon: '📌', description: 'Import computer/mobile static groups' },
   { id: 'config-profiles', name: 'Configuration Profiles', icon: '⚙️', description: 'Import macOS/iOS configuration profiles' },
   { id: 'scripts', name: 'Scripts', icon: '📜', description: 'Import scripts from Jamf Pro' },
   { id: 'packages', name: 'Packages', icon: '📦', description: 'Import package metadata (files must be added manually)' },

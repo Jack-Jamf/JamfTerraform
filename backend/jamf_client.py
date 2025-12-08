@@ -151,7 +151,7 @@ class JamfClient:
         Get resources by type.
         
         Args:
-            resource_type: One of 'policies', 'smart-groups', 'config-profiles', 'scripts', 'packages'
+            resource_type: One of 'policies', 'smart-groups', 'static-groups', 'config-profiles', 'scripts', 'packages'
             
         Returns:
             List of resource objects
@@ -162,6 +162,7 @@ class JamfClient:
         resource_methods = {
             "policies": self.list_policies,
             "smart-groups": self.list_computer_groups,
+            "static-groups": self.list_computer_groups,
             "config-profiles": self.list_configuration_profiles,
             "scripts": self.list_scripts,
             "packages": self.list_packages,
@@ -336,6 +337,26 @@ class JamfClient:
         resources["jamf-app-catalog"] = await self.list_jamf_app_catalog()
         resources["policies"] = await self.list_policies()
         resources["config-profiles"] = await self.list_configuration_profiles()
-        resources["smart-groups"] = await self.list_computer_groups()
+        
+        # Split computer groups into smart and static
+        all_groups = await self.list_computer_groups()
+        smart_groups = []
+        static_groups = []
+        
+        # Fetch details for each group to determine type
+        for group in all_groups:
+            try:
+                detail = await self.get_computer_group_detail(group['id'])
+                if detail.get('is_smart', False):
+                    smart_groups.append(group)
+                else:
+                    static_groups.append(group)
+            except Exception as e:
+                print(f"Error checking group {group.get('id')}: {e}")
+                # Default to smart group if we can't determine
+                smart_groups.append(group)
+        
+        resources["smart-groups"] = smart_groups
+        resources["static-groups"] = static_groups
         
         return resources
