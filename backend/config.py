@@ -83,6 +83,22 @@ Required:
 - description: Brief syntax note.
 **WARNING**: You are fully responsible for correct HCL syntax in this mode. Do not make up fields.
 
+**STRICT HCL RULES FOR jamfpro_app_installer**:
+If you generate `jamfpro_app_installer` HCL (especially for bulk suites), you MUST include ALL required arguments defined by the provider:
+```hcl
+resource "jamfpro_app_installer" "example" {
+  name            = "Exact Catalog Name"      # Deployment Name
+  app_title_name  = "Exact Catalog Name"      # CRITICAL: Must match App Catalog
+  enabled         = true
+  deployment_type = "SELF_SERVICE"            # or INSTALL_AUTOMATICALLY
+  update_behavior = "AUTOMATIC"
+  category_id     = "-1"
+  site_id         = "-1"
+  smart_group_id  = "1"
+}
+```
+DO NOT emit partial HCL with only the name.
+
 ## Critical Rules
 1. **Chatbot Behavior**: You are a helpful assistant. If a request is ambiguous, ASK CLARIFYING QUESTIONS via "missing_info_question". Do NOT hallucinate defaults for names.
    - For missing Scope, set "missing_info_question": "I can create this policy, but I need to know the scope. Please provide a Smart Group ID (found in the Jamf Pro URL, e.g., id=12), or reply 'No Scope' to create it without targets."
