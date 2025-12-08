@@ -3,7 +3,7 @@ from typing import Optional, List, Dict, Any, Literal, Union
 
 # --- Base Intent ---
 class BaseIntent(BaseModel):
-    resource_type: Literal['policy', 'script', 'category', 'package', 'smart_group']
+    resource_type: Literal['policy', 'script', 'category', 'package', 'smart_group', 'static_group', 'app_installer']
 
 # --- Scope Schema ---
 class ScopeIntent(BaseModel):
@@ -30,6 +30,11 @@ class ScriptPayload(BaseModel):
     parameter4: Optional[str] = None
     parameter5: Optional[str] = None
     parameter6: Optional[str] = None
+    parameter7: Optional[str] = None
+    parameter8: Optional[str] = None
+    parameter9: Optional[str] = None
+    parameter10: Optional[str] = None
+    parameter11: Optional[str] = None
 
 class MaintenancePayload(BaseModel):
     recon: bool = False
@@ -75,6 +80,20 @@ class SmartGroupIntent(BaseIntent):
     is_smart: bool = True
     criteria: list = [] # Simplified for now
 
+class StaticGroupIntent(BaseIntent):
+    resource_type: Literal['static_group']
+    name: str
+
+class AppInstallerIntent(BaseIntent):
+    resource_type: Literal['app_installer']
+    name: str
+    enabled: bool = True
+    deployment_type: Literal['SELF_SERVICE', 'INSTALL_AUTOMATICALLY'] = 'SELF_SERVICE'
+    update_behavior: Literal['AUTOMATIC', 'MANUAL'] = 'AUTOMATIC'
+    category_id: int = -1
+    site_id: int = -1
+    smart_group_id: int = 1
+
 # --- Master Intent ---
 class UserIntent(BaseModel):
     """
@@ -82,5 +101,5 @@ class UserIntent(BaseModel):
     If the user's request is incomplete or invalid, the validation error
     will guide the bot's next question.
     """
-    intent: Optional[Union[PolicyIntent, ScriptIntent, CategoryIntent, PackageIntent, SmartGroupIntent]] = None
+    intent: Optional[Union[PolicyIntent, ScriptIntent, CategoryIntent, PackageIntent, SmartGroupIntent, StaticGroupIntent, AppInstallerIntent]] = None
     missing_info_question: Optional[str] = Field(None, description="If intent is incomplete/invalid, ask this question.")

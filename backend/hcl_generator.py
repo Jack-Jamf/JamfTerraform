@@ -90,7 +90,7 @@ class HCLGenerator:
             sg_name = self._sanitize_name(smart_group['name'])
             hcl.append(f'  smart_group_id  = jamfpro_computer_group_smart.{sg_name}.id')
         else:
-            hcl.append(f'  smart_group_id  = "1"  # All Managed Clients')
+            hcl.append(f'  smart_group_id  = "{smart_group_id}"')
         
         hcl.append('}')
         

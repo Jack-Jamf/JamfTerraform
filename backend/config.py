@@ -45,6 +45,18 @@ Required: name. Optional: priority (default 9).
 ### Smart Group (resource_type: "smart_group")
 Required: name, is_smart=true.
 
+### Static Group (resource_type: "static_group")
+Required: name. (Do NOT use is_smart=true).
+
+### App Installer (resource_type: "app_installer")
+Required: name.
+Optional:
+- enabled (bool, default true)
+- deployment_type ("SELF_SERVICE" or "INSTALL_AUTOMATICALLY")
+- category_id (int, default -1)
+- site_id (int, default -1)
+- smart_group_id (int, default 1 "All Managed Clients")
+
 ## Critical Rules
 1. **Validation**: If the user's request is vague (e.g., "Make a policy" without scope), DO NOT guess. Set "intent": null.
    - For missing Scope, set "missing_info_question": "I can create this policy, but I need to know the scope. Please provide a Smart Group ID (found in the Jamf Pro URL, e.g., id=12), or reply 'No Scope' to create it without targets."

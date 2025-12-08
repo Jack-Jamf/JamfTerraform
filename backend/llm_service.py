@@ -2,7 +2,7 @@
 import google.generativeai as genai
 import json
 from config import GEMINI_API_KEY, GEMINI_MODEL, SYSTEM_PROMPT
-from schemas import UserIntent, PolicyIntent, ScriptIntent, CategoryIntent, PackageIntent, SmartGroupIntent
+from schemas import UserIntent, PolicyIntent, ScriptIntent, CategoryIntent, PackageIntent, SmartGroupIntent, StaticGroupIntent, AppInstallerIntent
 from hcl_generator import HCLGenerator
 
 
@@ -20,7 +20,7 @@ class LLMService:
             system_instruction=SYSTEM_PROMPT,
             generation_config={"response_mime_type": "application/json"}
         )
-        self.hcl_gen = HCLGenerator()
+        # HCLGenerator is instantiated per-request to ensure fresh naming state
     
     def generate_hcl(self, user_prompt: str, context: str | None = None) -> str:
         """
@@ -35,12 +35,10 @@ class LLMService:
         response = self.model.generate_content(full_prompt)
         text = response.text.strip()
         
-        # Remove code fences if present (though response_mime_type should handle it)
+        # Remove code fences if present
         if text.startswith("```"):
             lines = text.split("\n")
-            # Remove first line (```json)
             lines = lines[1:]
-            # Remove last line if ```
             if lines and lines[-1].strip() == "```":
                 lines = lines[:-1]
             text = "\n".join(lines)
@@ -64,12 +62,16 @@ class LLMService:
                 'script': 'scripts',
                 'category': 'categories',
                 'package': 'packages',
-                'smart_group': 'smart-groups'
+                'smart_group': 'smart-groups',
+                'static_group': 'static-groups',
+                'app_installer': 'jamf-app-catalog'
             }
             gen_type = type_map.get(parsed.intent.resource_type, parsed.intent.resource_type)
             
             try:
-                hcl = self.hcl_gen.generate_resource_hcl(gen_type, data)
+                # Use fresh generator instance for stateless generation
+                generator = HCLGenerator()
+                hcl = generator.generate_resource_hcl(gen_type, data)
                 return self._wrap_with_provider(hcl)
             except Exception as ex:
                 return f"# Error generating HCL from intent: {ex}"
@@ -118,6 +120,25 @@ class LLMService:
             data['name'] = intent.name
             data['is_smart'] = intent.is_smart
             # data['criteria'] = ...
+            
+        elif isinstance(intent, StaticGroupIntent):
+            data['name'] = intent.name
+            data['is_smart'] = False
+            
+        elif isinstance(intent, AppInstallerIntent):
+            data['name'] = intent.name
+            data['app'] = {
+                'bundleId': 'com.example.app',
+                'latestVersion': '1.0.0'
+            }
+            # Match API structure expected by HCLGenerator
+            data['enabled'] = intent.enabled
+            data['deploymentType'] = intent.deployment_type
+            data['updateBehavior'] = intent.update_behavior
+            
+            data['category'] = {'id': intent.category_id}
+            data['site'] = {'id': intent.site_id}
+            data['smartGroup'] = {'id': intent.smart_group_id}
             
         return data
 
