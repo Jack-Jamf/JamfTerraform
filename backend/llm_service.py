@@ -15,13 +15,43 @@ class LLMService:
             raise ValueError("GEMINI_API_KEY environment variable is not set")
         
         genai.configure(api_key=GEMINI_API_KEY)
+        self.app_catalog = self._load_app_catalog()
+        
+        # Inject the full App Catalog into the System Prompt for Semantic Search
+        catalog_str = "\n".join([f'- "{title}"' for title in self.app_catalog])
+        enhanced_system_prompt = f"{SYSTEM_PROMPT}\n\n## OFFICIAL JAMF APP CATALOG (Strict List):\n{catalog_str}\n\n[INSTRUCTION]: When a user requests an app (e.g. 'PDF Editor'), SEMANTICALLY MATCH it to one of the titles above. ONLY use titles from this list."
+
         self.model = genai.GenerativeModel(
             model_name=GEMINI_MODEL,
-            system_instruction=SYSTEM_PROMPT,
+            system_instruction=enhanced_system_prompt,
             generation_config={"response_mime_type": "application/json"}
         )
-        # HCLGenerator is instantiated per-request to ensure fresh naming state
-    
+
+    def _load_app_catalog(self) -> list[str]:
+        """Load known Jamf App Catalog titles for validation."""
+        try:
+            with open("app_catalog.json", "r") as f:
+                return json.load(f)
+        except Exception:
+            return []
+
+    def _validate_app_installer(self, intent: AppInstallerIntent) -> str | None:
+        """
+        Validate that the requested app name exists in the catalog.
+        Returns None if valid, or a warning/error message if invalid.
+        """
+        if not self.app_catalog:
+            return None # Skip validation if catalog not loaded
+            
+        if intent.name not in self.app_catalog:
+            # Fuzzy match suggestion
+            import difflib
+            suggestions = difflib.get_close_matches(intent.name, self.app_catalog, n=3, cutoff=0.4)
+            suggestion_msg = f" Did you mean: {', '.join(suggestions)}?" if suggestions else ""
+            return f"I cannot verify '{intent.name}' in the Jamf App Catalog.{suggestion_msg} Please use an exact title from the official list."
+        
+        return None
+
     def generate_hcl(self, user_prompt: str, context: str | None = None) -> str:
         """
         Generate HCL configuration based on user prompt via structured intent.
@@ -58,6 +88,12 @@ class LLMService:
             if isinstance(parsed.intent, RawHCLIntent):
                 raw_hcl = f"# Generated via Hybrid Mode (Raw AI Output) - Verify syntax!\n{parsed.intent.hcl_body}"
                 return self._wrap_with_provider(raw_hcl)
+
+            # Validation for App Installers
+            if isinstance(parsed.intent, AppInstallerIntent):
+                validation_error = self._validate_app_installer(parsed.intent)
+                if validation_error:
+                    return f"# NOTE: {validation_error}"
 
             data = self._convert_intent_to_data(parsed.intent)
             
