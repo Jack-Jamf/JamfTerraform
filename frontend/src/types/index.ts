@@ -38,3 +38,9 @@ export interface JamfCredentials {
   password: string;
 }
 
+export interface JamfAuthResponse {
+  success: boolean;
+  token?: string;
+  error?: string;
+}
+

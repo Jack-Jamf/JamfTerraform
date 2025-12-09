@@ -3,8 +3,8 @@ from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from models import (GenerateHCLRequest, GenerateHCLResponse, JamfResourcesRequest, 
                    JamfResourceListResponse, JamfInstanceExportRequest, JamfInstanceExportResponse,
-                   JamfInstanceSummary, JamfResourceDetailRequest, JamfResourceDetailResponse, 
-                   ResourceDependency, BulkExportRequest)
+    JamfInstanceSummary, JamfResourceDetailRequest, JamfResourceDetailResponse, 
+    ResourceDependency, BulkExportRequest, JamfAuthRequest, JamfAuthResponse)
 from llm_service import get_llm_service
 from jamf_client import JamfClient
 from dependency_resolver import DependencyResolver
@@ -92,6 +92,46 @@ async def get_cookbook():
         cookbook_data = json.load(f)
     
     return cookbook_data
+
+
+@app.post("/api/jamf/verify-auth", response_model=JamfAuthResponse)
+async def verify_auth_credentials(request: JamfAuthRequest):
+    """
+    Verify Jamf Pro credentials by attempting to get an auth token.
+    
+    Args:
+        request: JamfAuthRequest with credentials
+        
+    Returns:
+        JamfAuthResponse with success status
+    """
+    try:
+        client = JamfClient(
+            url=request.credentials.url,
+            username=request.credentials.username,
+            password=request.credentials.password
+        )
+        
+        token = await client.get_auth_token()
+        
+        return JamfAuthResponse(
+            success=True,
+            token=token,
+            error=None
+        )
+    except ValueError as e:
+        # Auth failure usually raises ValueError from JamfClient
+        return JamfAuthResponse(
+            success=False,
+            token=None,
+            error=str(e)
+        )
+    except Exception as e:
+        return JamfAuthResponse(
+            success=False,
+            token=None,
+            error=f"Connection failed: {str(e)}"
+        )
 
 
 @app.post("/api/jamf/resources", response_model=JamfResourceListResponse)

@@ -22,6 +22,18 @@ class JamfCredentials(BaseModel):
     password: str = Field(..., description="API password")
 
 
+class JamfAuthRequest(BaseModel):
+    """Request model for verifying Jamf credentials."""
+    credentials: JamfCredentials = Field(..., description="Jamf Pro credentials to verify")
+
+
+class JamfAuthResponse(BaseModel):
+    """Response model for auth verification."""
+    success: bool = Field(..., description="Whether authentication was successful")
+    token: str | None = Field(None, description="Bearer token if successful")
+    error: str | None = Field(None, description="Error message if failed")
+
+
 class JamfResourcesRequest(BaseModel):
     """Request model for listing Jamf resources."""
     credentials: JamfCredentials = Field(..., description="Jamf Pro credentials")

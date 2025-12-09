@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { JamfCredentials } from '../types';
+import { ExecutionService } from '../services/ExecutionService';
 import './JamfStatus.css';
 
 interface JamfStatusProps {
@@ -24,6 +25,7 @@ const JamfStatus: React.FC<JamfStatusProps> = ({ onCredentialsChange }) => {
     }
   };
 
+  /* eslint-disable @typescript-eslint/no-unused-vars */
   const handleConnect = () => {
     if (!url || !username || !password) return;
     if (!validateUrl(url)) return;
@@ -38,17 +40,37 @@ const JamfStatus: React.FC<JamfStatusProps> = ({ onCredentialsChange }) => {
     onCredentialsChange?.(credentials);
     setIsExpanded(false);
   };
+  /* eslint-enable @typescript-eslint/no-unused-vars */
 
   const handleTestConnection = async () => {
     if (!url || !username || !password) return;
     if (!validateUrl(url)) return;
 
     setIsTesting(true);
-    // Simulate connection test
-    setTimeout(() => {
+    
+    try {
+      const credentials: JamfCredentials = {
+        url: url.trim(),
+        username: username.trim(),
+        password: password,
+      };
+
+      const result = await ExecutionService.verifyAuth(credentials);
+
+      if (result.success) {
+        setIsConnected(true);
+        onCredentialsChange?.(credentials);
+        setIsExpanded(false);
+      } else {
+        alert(`Connection Failed: ${result.error || 'Unknown error'}`);
+        setIsConnected(false);
+      }
+    } catch (error) {
+      alert(`Connection Failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setIsConnected(false);
+    } finally {
       setIsTesting(false);
-      handleConnect();
-    }, 1500);
+    }
   };
 
   const handleDisconnect = () => {

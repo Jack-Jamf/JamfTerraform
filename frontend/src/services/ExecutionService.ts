@@ -1,4 +1,4 @@
-import type { GenerateHCLRequest, GenerateHCLResponse, JamfCredentials } from '../types';
+import type { GenerateHCLRequest, GenerateHCLResponse, JamfCredentials, JamfAuthResponse } from '../types';
 
 // Using Railway backend
 const API_BASE_URL = 'https://jamfaform-production.up.railway.app';
@@ -226,6 +226,40 @@ export class ExecutionService {
         resource: {},
         dependencies: [],
         hcl: '',
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
+      };
+    }
+  }
+
+  /**
+   * Verify Jamf Pro credentials.
+   */
+  static async verifyAuth(credentials: JamfCredentials): Promise<JamfAuthResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/jamf/verify-auth`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          credentials: {
+            url: credentials.url,
+            username: credentials.username,
+            password: credentials.password,
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to verify auth:', error);
+      return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred',
       };
