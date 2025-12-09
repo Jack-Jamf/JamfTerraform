@@ -249,8 +249,8 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
             <div className="bulk-actions-bar">
                {hasPackagesSelected && (
                  <div className="package-warning-banner">
-                   <span>📦 Package files (.pkg/.dmg) are NOT downloaded due to size. You must manually add them to support_files/packages/</span>
-                 </div>
+                    <span>📦 Package files (.pkg/.dmg) are NOT downloaded due to size. Use <a href="https://github.com/rtrouton/rtrouton_scripts/tree/main/rtrouton_scripts/Casper_Scripts/Jamf_Pro_JCDS_Installer_Package_Download" target="_blank" rel="noopener noreferrer">this script</a> to download them separately.</span>
+                  </div>
                )}
                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <span className="selection-count">{selection.size} item{selection.size !== 1 ? 's' : ''}</span>
@@ -393,7 +393,7 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
                       ))}
                     </div>
                     <div className="package-warning-banner" style={{ marginBottom: '12px' }}>
-                      <span>📦 Package files (.pkg/.dmg) are NOT downloaded due to size. You must manually add them to support_files/packages/</span>
+                      <span>📦 Package files (.pkg/.dmg) are NOT downloaded due to size. Use <a href="https://github.com/rtrouton/rtrouton_scripts/tree/main/rtrouton_scripts/Casper_Scripts/Jamf_Pro_JCDS_Installer_Package_Download" target="_blank" rel="noopener noreferrer">this script</a> to download them separately.</span>
                     </div>
                     <button className="download-btn" onClick={handleDownloadInstanceZip} disabled={loading}>
                       <span className="btn-icon">⬇️</span>

@@ -509,6 +509,17 @@
   display: block;
 }
 
+.package-warning-banner a {
+  color: #60a5fa;
+  text-decoration: underline;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+.package-warning-banner a:hover {
+  color: #93c5fd;
+}
+
 /* Section Divider */
 .section-divider {
   display: flex;
