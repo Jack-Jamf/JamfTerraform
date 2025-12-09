@@ -508,3 +508,115 @@
   line-height: 1.4;
   display: block;
 }
+
+/* Section Divider */
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin: var(--spacing-md) 0;
+  color: var(--color-text-tertiary);
+}
+
+.section-divider::before,
+.section-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+}
+
+.section-divider span {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Export Hint */
+.export-hint {
+  margin-top: var(--spacing-sm);
+  text-align: center;
+}
+
+.export-hint small {
+  font-size: 0.7rem;
+  color: var(--color-text-tertiary);
+  font-style: italic;
+}
+
+/* Enhanced Download Button */
+.download-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+}
+
+.download-btn .btn-icon {
+  font-size: 1.1rem;
+}
+
+.download-btn .btn-text {
+  font-weight: 600;
+}
+
+/* Enhanced Export All Button */
+.export-all-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  background: linear-gradient(135deg, rgba(119, 142, 177, 0.9), rgba(119, 142, 177, 0.7));
+  border: 1px solid rgba(119, 142, 177, 0.3);
+  box-shadow: 0 2px 8px rgba(119, 142, 177, 0.2);
+}
+
+.export-all-btn:hover {
+  background: linear-gradient(135deg, rgba(119, 142, 177, 1), rgba(119, 142, 177, 0.85));
+  box-shadow: 0 4px 16px rgba(119, 142, 177, 0.3);
+}
+
+/* Enhanced Instance Summary */
+.instance-summary {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.instance-summary h4 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+/* Badge for resource counts */
+.summary-count {
+  background: rgba(119, 142, 177, 0.15);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+/* Improved resource item hover */
+.resource-item {
+  position: relative;
+  overflow: hidden;
+}
+
+.resource-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--color-jamf-blue);
+  transform: scaleY(0);
+  transition: transform 0.2s ease;
+}
+
+.resource-item:hover::before {
+  transform: scaleY(1);
+}
+

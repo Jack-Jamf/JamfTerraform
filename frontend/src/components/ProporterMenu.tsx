@@ -227,7 +227,7 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
                   </button>
                 </div>
               )}
-              {viewMode === 'instance-export' && '📦 Instance Export'}
+              {viewMode === 'instance-export' && '📊 Instance Summary'}
             </h3>
             <button
               className="close-btn"
@@ -274,11 +274,14 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
             {viewMode === 'main' && (
               <>
                 <div className="proporter-info">
-                  <p>Select a resource type or export your entire Jamf instance.</p>
+                  <p>Browse resources by type or scan your entire instance.</p>
                 </div>
                 <button className="export-all-btn" onClick={handleExportAll}>
-                  🌍 Export Entire Instance
+                  📊 Instance Summary
                 </button>
+                <div className="section-divider">
+                  <span>Browse by Type</span>
+                </div>
                 <div className="resource-list">
                   {RESOURCE_TYPES.map((resourceType) => (
                     <div
@@ -378,7 +381,7 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
                 ) : (
                   <>
                     <div className="instance-summary">
-                      <h4>📊 Instance Summary</h4>
+                      <h4>🏢 Your Jamf Pro Instance</h4>
                       <div className="summary-total">
                         {instanceSummary.reduce((sum, s) => sum + s.count, 0)} total resources
                       </div>
@@ -393,8 +396,12 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
                       <span>📦 Package files (.pkg/.dmg) are NOT downloaded due to size. You must manually add them to support_files/packages/</span>
                     </div>
                     <button className="download-btn" onClick={handleDownloadInstanceZip} disabled={loading}>
-                      ⬇️ Download Complete Export (ZIP)
+                      <span className="btn-icon">⬇️</span>
+                      <span className="btn-text">Download as Terraform (ZIP)</span>
                     </button>
+                    <div className="export-hint">
+                      <small>Generates production-ready .tf files with dependencies</small>
+                    </div>
                   </>
                 )}
               </>
