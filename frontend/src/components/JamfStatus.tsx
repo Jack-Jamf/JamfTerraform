@@ -25,23 +25,6 @@ const JamfStatus: React.FC<JamfStatusProps> = ({ onCredentialsChange }) => {
     }
   };
 
-  /* eslint-disable @typescript-eslint/no-unused-vars */
-  const handleConnect = () => {
-    if (!url || !username || !password) return;
-    if (!validateUrl(url)) return;
-
-    const credentials: JamfCredentials = {
-      url: url.trim(),
-      username: username.trim(),
-      password: password,
-    };
-
-    setIsConnected(true);
-    onCredentialsChange?.(credentials);
-    setIsExpanded(false);
-  };
-  /* eslint-enable @typescript-eslint/no-unused-vars */
-
   const handleTestConnection = async () => {
     if (!url || !username || !password) return;
     if (!validateUrl(url)) return;
