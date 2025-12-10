@@ -1172,6 +1172,15 @@ class HCLGenerator:
         # Generate input_type block
         hcl.append('  input_type {')
         hcl.append(f'    type = "{input_type}"')
+        
+        # For POPUP type, include popup_menu_items inside the block
+        if input_type == 'POPUP':
+            choices = input_type_data.get('popup_choices', [])
+            if choices:
+                escaped_choices = [self._escape_hcl_string(str(c)) for c in choices]
+                choices_str = ', '.join([f'"{c}"' for c in escaped_choices])
+                hcl.append(f'    popup_menu_items = [{choices_str}]')
+        
         hcl.append('  }')
         
         # Optional description
@@ -1191,17 +1200,12 @@ class HCLGenerator:
             data_type = data_type_map.get(ea_data['data_type'], ea_data['data_type'].upper())
             hcl.append(f'  data_type = "{data_type}"')
         
-        # NOTE: inventory_display is not supported in current provider version
-        # Removed to prevent validation errors
-        
-        # Input type specific fields
-        if input_type == 'POPUP':
-            choices = input_type_data.get('popup_choices', [])
-            if choices:
-                escaped_choices = [self._escape_hcl_string(str(c)) for c in choices]
-                choices_str = ', '.join([f'"{c}"' for c in escaped_choices])
-                hcl.append(f'  popup_menu_choices = [{choices_str}]')
+        # inventory_display is REQUIRED by provider
+        if ea_data.get('inventory_display'):
+            hcl.append(f'  inventory_display = "{ea_data["inventory_display"]}"')
+        else:
+            # Default if not provided
+            hcl.append('  inventory_display = "Extension Attributes"')
         
         hcl.append('}')
         return '\n'.join(hcl)
-
