@@ -15,6 +15,7 @@ from export_validator import ExportValidator, generate_validation_report
 from collections import defaultdict
 import asyncio
 import json
+import os
 import zipfile
 import io
 from pathlib import Path
@@ -442,7 +443,8 @@ async def bulk_export_resources(request: BulkExportRequest):
             print(f"[BULK EXPORT] Skipping {len(static_groups)} static group(s) (not supported by provider)")
         
         resources_by_type['smart-groups'] = smart_groups
-        resources_by_type['_static_groups_skipped'] = len(static_groups)  # Track for validation report
+        # Track static groups count separately (not in resources_by_type to avoid iteration issues)
+        static_groups_skipped_count = len(static_groups)
 
         # Extension Attributes
         print(f"[BULK EXPORT] Fetching computer extension attributes...")
@@ -651,7 +653,7 @@ async def bulk_export_resources(request: BulkExportRequest):
             )
             
             # Add static groups count to validation result
-            validation_result['_static_groups_skipped'] = resources_by_type.get('_static_groups_skipped', 0)
+            validation_result['_static_groups_skipped'] = static_groups_skipped_count
             
             # Generate validation report
             validation_report = generate_validation_report(validation_result)

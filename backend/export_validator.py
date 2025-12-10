@@ -7,6 +7,7 @@ confidence scores and warnings.
 from typing import Dict, Any, List, Tuple
 from collections import defaultdict
 import re
+import os
 from difflib import SequenceMatcher
 
 
@@ -89,7 +90,6 @@ class ExportValidator:
                 continue
             
             # Extract just the filename from path
-            import os
             filename = os.path.basename(file_source)
             
             # Check if names are similar
@@ -298,6 +298,7 @@ def generate_validation_report(validation_result: dict) -> str:
                 report += "\n**Note**: Groups will be created in dependency order. Names must match exactly.\n\n"
     
     # Errors
+    errors = validation_result.get('errors', [])
     if errors:
         report += f"## ❌ Errors ({len(errors)})\n\n"
         for error in errors:
@@ -305,10 +306,12 @@ def generate_validation_report(validation_result: dict) -> str:
         report += "\n"
     
     # Resource summary
+    total = validation_result.get('total_resources', 0)
     report += f"## 📊 Resource Summary\n\n"
     report += f"**Total Resources**: {total}\n\n"
     
     # Deployment guidance
+    confidence = validation_result.get('confidence_score', 0.0)
     report += "## 🚀 Deployment Recommendations\n\n"
     
     if confidence >= 0.9:
