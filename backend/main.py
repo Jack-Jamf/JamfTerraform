@@ -505,7 +505,11 @@ async def bulk_export_resources(request: BulkExportRequest):
 
         # Mobile Device Groups
         print(f"[BULK EXPORT] Fetching mobile device groups...")
-        md_groups = await client.list_mobile_device_groups()
+        try:
+            md_groups = await client.list_mobile_device_groups()
+        except Exception as e:
+            print(f"[ERROR] Failed to list mobile device groups: {e}")
+            md_groups = []
         async def fetch_md_group_detail(g):
             try:
                 return await client.get_mobile_device_group_detail(g['id'])
@@ -519,7 +523,11 @@ async def bulk_export_resources(request: BulkExportRequest):
 
         # Mobile Device Prestages  
         print(f"[BULK EXPORT] Fetching mobile device prestages...")
-        md_prestages = await client.list_mobile_device_prestages()
+        try:
+            md_prestages = await client.list_mobile_device_prestages()
+        except Exception as e:
+            print(f"[ERROR] Failed to list mobile device prestages: {e}")
+            md_prestages = []
         async def fetch_md_prestage_detail(p):
             try:
                 return await client.get_mobile_device_prestage_detail(p['id'])
@@ -533,7 +541,11 @@ async def bulk_export_resources(request: BulkExportRequest):
 
         # Mobile Device Config Profiles
         print(f"[BULK EXPORT] Fetching mobile device config profiles...")
-        md_profiles = await client.list_mobile_device_configuration_profiles()
+        try:
+            md_profiles = await client.list_mobile_device_configuration_profiles()
+        except Exception as e:
+            print(f"[ERROR] Failed to list mobile device config profiles: {e}")
+            md_profiles = []
         async def fetch_md_profile_detail(p):
             try:
                 return await client.get_mobile_device_configuration_profile_detail(p['id'])
@@ -547,7 +559,11 @@ async def bulk_export_resources(request: BulkExportRequest):
 
         # Advanced Mobile Device Searches
         print(f"[BULK EXPORT] Fetching advanced mobile device searches...")
-        md_searches = await client.list_advanced_mobile_device_searches()
+        try:
+            md_searches = await client.list_advanced_mobile_device_searches()
+        except Exception as e:
+            print(f"[ERROR] Failed to list advanced mobile device searches: {e}")
+            md_searches = []
         async def fetch_md_search_detail(s):
             try:
                 return await client.get_advanced_mobile_device_search_detail(s['id'])
@@ -561,7 +577,11 @@ async def bulk_export_resources(request: BulkExportRequest):
 
         # Mobile Device Extension Attributes
         print(f"[BULK EXPORT] Fetching mobile device extension attributes...")
-        md_eas = await client.list_mobile_device_extension_attributes()
+        try:
+            md_eas = await client.list_mobile_device_extension_attributes()
+        except Exception as e:
+            print(f"[ERROR] Failed to list mobile device extension attributes: {e}")
+            md_eas = []
         async def fetch_md_ea_detail(ea):
             try:
                 return await client.get_mobile_device_extension_attribute_detail(ea['id'])
