@@ -109,73 +109,73 @@ class JamfClient:
     async def get_computer_extension_attribute_detail(self, ea_id: int) -> dict:
         """Fetch detailed computer extension attribute data."""
         url = f"{self.base_url}/JSSResource/computerextensionattributes/id/{ea_id}"
-        async with self.rate_limiter:
-            response = await self.client.get(url, headers=self._get_headers())
-            
-            if response.status_code != 200:
-                raise ValueError(f"Failed to fetch computer extension attribute {ea_id}: {response.status_code}")
-            
-            data = response.json()
+        
+        response = await self._client.get(url, headers=self._get_headers())
+        
+        if response.status_code != 200:
+            raise ValueError(f"Failed to fetch computer extension attribute {ea_id}: {response.status_code}")
+        
+        data = response.json()
         return data.get("computer_extension_attribute", {})
 
     async def list_advanced_computer_searches(self) -> list:
         """List all advanced computer searches."""
         url = f"{self.base_url}/JSSResource/advancedcomputersearches"
-        async with self.rate_limiter:
-            response = await self.client.get(url, headers=self._get_headers())
-            if response.status_code != 200:
-                raise ValueError(f"Failed to fetch advanced computer searches: {response.status_code}")
-            data = response.json()
+        
+        response = await self._client.get(url, headers=self._get_headers())
+        if response.status_code != 200:
+            raise ValueError(f"Failed to fetch advanced computer searches: {response.status_code}")
+        data = response.json()
         return data.get("advanced_computer_searches", [])
 
     async def get_advanced_computer_search_detail(self, search_id: int) -> dict:
         """Fetch detailed advanced computer search data."""
         url = f"{self.base_url}/JSSResource/advancedcomputersearches/id/{search_id}"
-        async with self.rate_limiter:
-            response = await self.client.get(url, headers=self._get_headers())
-            if response.status_code != 200:
-                raise ValueError(f"Failed to fetch advanced computer search {search_id}: {response.status_code}")
-            data = response.json()
+        
+        response = await self._client.get(url, headers=self._get_headers())
+        if response.status_code != 200:
+            raise ValueError(f"Failed to fetch advanced computer search {search_id}: {response.status_code}")
+        data = response.json()
         return data.get("advanced_computer_search", {})
 
     async def list_departments(self) -> list:
         """List all departments."""
         url = f"{self.base_url}/JSSResource/departments"
-        async with self.rate_limiter:
-            response = await self.client.get(url, headers=self._get_headers())
-            if response.status_code != 200:
-                raise ValueError(f"Failed to fetch departments: {response.status_code}")
-            data = response.json()
+        
+        response = await self._client.get(url, headers=self._get_headers())
+        if response.status_code != 200:
+            raise ValueError(f"Failed to fetch departments: {response.status_code}")
+        data = response.json()
         return data.get("departments", [])
 
     async def get_department_detail(self, dept_id: int) -> dict:
         """Fetch detailed department data."""
         url = f"{self.base_url}/JSSResource/departments/id/{dept_id}"
-        async with self.rate_limiter:
-            response = await self.client.get(url, headers=self._get_headers())
-            if response.status_code != 200:
-                raise ValueError(f"Failed to fetch department {dept_id}: {response.status_code}")
-            data = response.json()
+        
+        response = await self._client.get(url, headers=self._get_headers())
+        if response.status_code != 200:
+            raise ValueError(f"Failed to fetch department {dept_id}: {response.status_code}")
+        data = response.json()
         return data.get("department", {})
 
     async def list_network_segments(self) -> list:
         """List all network segments."""
         url = f"{self.base_url}/JSSResource/networksegments"
-        async with self.rate_limiter:
-            response = await self.client.get(url, headers=self._get_headers())
-            if response.status_code != 200:
-                raise ValueError(f"Failed to fetch network segments: {response.status_code}")
-            data = response.json()
+        
+        response = await self._client.get(url, headers=self._get_headers())
+        if response.status_code != 200:
+            raise ValueError(f"Failed to fetch network segments: {response.status_code}")
+        data = response.json()
         return data.get("network_segments", [])
 
     async def get_network_segment_detail(self, segment_id: int) -> dict:
         """Fetch detailed network segment data."""
         url = f"{self.base_url}/JSSResource/networksegments/id/{segment_id}"
-        async with self.rate_limiter:
-            response = await self.client.get(url, headers=self._get_headers())
-            if response.status_code != 200:
-                raise ValueError(f"Failed to fetch network segment {segment_id}: {response.status_code}")
-            data = response.json()
+        
+        response = await self._client.get(url, headers=self._get_headers())
+        if response.status_code != 200:
+            raise ValueError(f"Failed to fetch network segment {segment_id}: {response.status_code}")
+        data = response.json()
         return data.get("network_segment", {})
     
     async def list_computer_groups(self) -> list:
