@@ -20,7 +20,7 @@ export class ExecutionService {
     credentials: JamfCredentials,
     resources: Array<{ type: string; id: number }>,
     includeDependencies: boolean = true
-  ): Promise<Blob | null> {
+  ): Promise<Blob> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/jamf/bulk-export`, {
         method: 'POST',
@@ -39,13 +39,32 @@ export class ExecutionService {
       });
 
       if (!response.ok) {
-         console.error('Bulk export failed', await response.text());
-         return null;
+         const errorText = await response.text();
+         console.error('Bulk export failed', errorText);
+         
+         // Try to parse as JSON for better error message
+         try {
+           const errorJson = JSON.parse(errorText);
+           throw new Error(errorJson.detail || errorJson.message || `Export failed with status ${response.status}`);
+         } catch {
+           throw new Error(`Export failed: ${response.statusText} (${response.status})`);
+         }
       }
+      
+      // Verify we're receiving a ZIP file, not an error response
+      const contentType = response.headers.get('Content-Type');
+      if (!contentType || !contentType.includes('application/zip')) {
+        console.error(`Unexpected content type: ${contentType}`);
+        const errorBody = await response.text();
+        console.error('Response body:', errorBody);
+        throw new Error('Server returned invalid response. Expected ZIP file but received: ' + (contentType || 'unknown type'));
+      }
+      
       return await response.blob();
     } catch (e) {
       console.error('Bulk export error:', e);
-      return null;
+      // Re-throw error so calling code can display message to user
+      throw e;
     }
   }
 

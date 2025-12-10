@@ -67,28 +67,30 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
     if (!credentials || selection.size === 0) return;
     
     setLoading(true);
+    setError(null);
     const resources = Array.from(selection).map(key => {
         const [type, idStr] = key.split(':');
         return { type, id: parseInt(idStr) };
     });
 
-    const blob = await ExecutionService.bulkExport(credentials, resources, includeDependencies);
-    setLoading(false);
+    try {
+      const blob = await ExecutionService.bulkExport(credentials, resources, includeDependencies);
+      setLoading(false);
 
-    if (blob) {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'jamf_bulk_export.zip';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        // Clear selection after download? Maybe optional.
-        // setSelection(new Set()); 
-        // setIsSelecting(false);
-    } else {
-        setError('Bulk export failed');
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'jamf_bulk_export.zip';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      // Clear selection after download? Maybe optional.
+      // setSelection(new Set()); 
+      // setIsSelecting(false);
+    } catch (err) {
+      setLoading(false);
+      setError(err instanceof Error ? err.message : 'Bulk export failed');
     }
   };
 
@@ -135,6 +137,7 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
     
     setLoading(true);
     setExportPhase('downloading');
+    setError(null);
     
     // Collect all resource IDs from the summary
     const allResources: Array<{ type: string; id: number }> = [];
@@ -144,11 +147,11 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
       }
     }
     
-    const blob = await ExecutionService.bulkExport(credentials, allResources, true);
-    setLoading(false);
-    setExportPhase('idle');
-    
-    if (blob) {
+    try {
+      const blob = await ExecutionService.bulkExport(credentials, allResources, true);
+      setLoading(false);
+      setExportPhase('idle');
+      
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -157,8 +160,10 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } else {
-      setError('Failed to download instance export');
+    } catch (err) {
+      setLoading(false);
+      setExportPhase('idle');
+      setError(err instanceof Error ? err.message : 'Failed to download instance export');
     }
   };
 
