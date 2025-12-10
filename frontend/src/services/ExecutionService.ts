@@ -1,7 +1,7 @@
 import type { GenerateHCLRequest, GenerateHCLResponse, JamfCredentials, JamfAuthResponse } from '../types';
 
-// Production API URL
-export const API_BASE_URL = 'https://jamfaform-production.up.railway.app';
+// Production API URL - New Railway Deployment
+export const API_BASE_URL = 'https://jamfterraform-production.up.railway.app';
 // const API_BASE_URL = 'http://localhost:8000';  // For local testing
 
 
