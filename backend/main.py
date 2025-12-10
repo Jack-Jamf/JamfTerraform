@@ -503,12 +503,84 @@ async def bulk_export_resources(request: BulkExportRequest):
         resources_by_type['network-segments'] = [s for s in segment_details if s]
         print(f"[BULK EXPORT] Fetched {len(resources_by_type['network-segments'])} network segments")
 
+        # Mobile Device Groups
+        print(f"[BULK EXPORT] Fetching mobile device groups...")
+        md_groups = await client.list_mobile_device_groups()
+        async def fetch_md_group_detail(g):
+            try:
+                return await client.get_mobile_device_group_detail(g['id'])
+            except Exception as e:
+                print(f"Error fetching mobile device group {g['id']}: {e}")
+                return None
+        md_group_tasks = [fetch_md_group_detail(g) for g in md_groups]
+        md_group_details = await asyncio.gather(*md_group_tasks)
+        resources_by_type['mobile-device-groups'] = [g for g in md_group_details if g]
+        print(f"[BULK EXPORT] Fetched {len(resources_by_type['mobile-device-groups'])} mobile device groups")
+
+        # Mobile Device Prestages  
+        print(f"[BULK EXPORT] Fetching mobile device prestages...")
+        md_prestages = await client.list_mobile_device_prestages()
+        async def fetch_md_prestage_detail(p):
+            try:
+                return await client.get_mobile_device_prestage_detail(p['id'])
+            except Exception as e:
+                print(f"Error fetching mobile device prestage {p['id']}: {e}")
+                return None
+        md_prestage_tasks = [fetch_md_prestage_detail(p) for p in md_prestages]
+        md_prestage_details = await asyncio.gather(*md_prestage_tasks)
+        resources_by_type['mobile-device-prestages'] = [p for p in md_prestage_details if p]
+        print(f"[BULK EXPORT] Fetched {len(resources_by_type['mobile-device-prestages'])} mobile device prestages")
+
+        # Mobile Device Config Profiles
+        print(f"[BULK EXPORT] Fetching mobile device config profiles...")
+        md_profiles = await client.list_mobile_device_configuration_profiles()
+        async def fetch_md_profile_detail(p):
+            try:
+                return await client.get_mobile_device_configuration_profile_detail(p['id'])
+            except Exception as e:
+                print(f"Error fetching mobile device config profile {p['id']}: {e}")
+                return None
+        md_profile_tasks = [fetch_md_profile_detail(p) for p in md_profiles]
+        md_profile_details = await asyncio.gather(*md_profile_tasks)
+        resources_by_type['mobile-device-config-profiles'] = [p for p in md_profile_details if p]
+        print(f"[BULK EXPORT] Fetched {len(resources_by_type['mobile-device-config-profiles'])} mobile device config profiles")
+
+        # Advanced Mobile Device Searches
+        print(f"[BULK EXPORT] Fetching advanced mobile device searches...")
+        md_searches = await client.list_advanced_mobile_device_searches()
+        async def fetch_md_search_detail(s):
+            try:
+                return await client.get_advanced_mobile_device_search_detail(s['id'])
+            except Exception as e:
+                print(f"Error fetching mobile device search {s['id']}: {e}")
+                return None
+        md_search_tasks = [fetch_md_search_detail(s) for s in md_searches]
+        md_search_details = await asyncio.gather(*md_search_tasks)
+        resources_by_type['advanced-mobile-device-searches'] = [s for s in md_search_details if s]
+        print(f"[BULK EXPORT] Fetched {len(resources_by_type['advanced-mobile-device-searches'])} mobile device searches")
+
+        # Mobile Device Extension Attributes
+        print(f"[BULK EXPORT] Fetching mobile device extension attributes...")
+        md_eas = await client.list_mobile_device_extension_attributes()
+        async def fetch_md_ea_detail(ea):
+            try:
+                return await client.get_mobile_device_extension_attribute_detail(ea['id'])
+            except Exception as e:
+                print(f"Error fetching mobile device EA {ea['id']}: {e}")
+                return None
+        md_ea_tasks = [fetch_md_ea_detail(ea) for ea in md_eas]
+        md_ea_details = await asyncio.gather(*md_ea_tasks)
+        resources_by_type['mobile-device-extension-attributes'] = [ea for ea in md_ea_details if ea]
+        print(f"[BULK EXPORT] Fetched {len(resources_by_type['mobile-device-extension-attributes'])} mobile device EAs")
+
         for (r_type, _), (orig_type, r_data) in all_unique_resources.items():
             # Skip resources we've already fetched manually with full details
             # This also prevents static-groups from being added back after we explicitly filtered them
             if orig_type in ['smart-groups', 'static-groups', 'computer_groups', 
                            'extension-attributes', 'advanced-computer-searches', 
-                           'departments', 'network-segments']:
+                           'departments', 'network-segments',
+                           'mobile-device-groups', 'mobile-device-prestages', 'mobile-device-config-profiles',
+                           'advanced-mobile-device-searches', 'mobile-device-extension-attributes']:
                 continue
             resources_by_type[orig_type].append(r_data)
 
