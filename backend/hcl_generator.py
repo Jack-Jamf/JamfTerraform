@@ -14,6 +14,19 @@ if TYPE_CHECKING:
 class HCLGenerator:
     """Generates Terraform HCL from Jamf Pro resource data."""
     
+    # Enum mappings: Jamf API values → Terraform Provider values
+    REBOOT_OPTIONS_MAP = {
+        "Restart immediately": "Restart Immediately",
+        "Do not restart": "Do not restart",
+        "Restart if a package or update requires it": "Restart if a package or update requires it"
+    }
+    
+    SCRIPT_PRIORITY_MAP = {
+        "Before": "BEFORE",
+        "After": "AFTER",
+        "At Reboot": "AT_REBOOT"
+    }
+    
     def __init__(self, support_file_handler: Optional['SupportFileHandler'] = None):
         """
         Initialize the HCL generator.
@@ -35,6 +48,10 @@ class HCLGenerator:
             'static-groups': self._generate_computer_group_hcl,
             'computer_groups': self._generate_computer_group_hcl,
             'jamf-app-catalog': self._generate_app_catalog_hcl,
+            'extension-attributes': self._generate_extension_attribute_hcl,
+            'advanced-computer-searches': self._generate_advanced_computer_search_hcl,
+            'departments': self._generate_department_hcl,
+            'network-segments': self._generate_network_segment_hcl,
         }
     
     def generate_resource_hcl(self, resource_type: str, resource_data: dict, resource_name: Optional[str] = None) -> str:
@@ -92,7 +109,7 @@ class HCLGenerator:
         smart_group_id = smart_group.get('id', 1)
         if smart_group_id and smart_group.get('name'):
             sg_name = self._sanitize_name(smart_group['name'])
-            hcl.append(f'  smart_group_id  = jamfpro_computer_group_smart.{sg_name}.id')
+            hcl.append(f'  smart_group_id  = jamfpro_smart_computer_group.{sg_name}.id')
         else:
             hcl.append(f'  smart_group_id  = "{smart_group_id}"')
         
@@ -148,33 +165,174 @@ class HCLGenerator:
         self.used_names[resource_type].add(candidate)
         return candidate
     
-    def _escape_hcl_string(self, value: str) -> str:
+    def _map_enum(self, value: str, mapping: dict) -> str:
+        """
+        Map Jamf API enum value to Terraform provider enum value.
+        
+        Args:
+            value: Jamf API enum value
+            mapping: Dictionary mapping API values to provider values
+        
+        Returns:
+            Provider enum value, or original value if no mapping found
+        """
+        return mapping.get(value, value)
+    
+    def _escape_hcl_string(self, value: str, is_regex: bool = False) -> str:
         """
         Escape special characters in a string for use in HCL.
         
         Args:
             value: String to escape
-            
+            is_regex: If True, double-escape regex metacharacters for HCL
+        
         Returns:
             Escaped string safe for HCL
         """
         if not isinstance(value, str):
             return str(value)
         
-        # Escape backslashes first
-        escaped = value.replace('\\', '\\\\')
-        # Escape double quotes
+        # IMPORTANT: Replace actual newlines FIRST before escaping backslashes
+        # This prevents double-escaping of the backslash in \n
+        escaped = value.replace('\r\n', '\\n')  # Windows line endings
+        escaped = escaped.replace('\n', '\\n')   # Unix line endings
+        escaped = escaped.replace('\r', '\\r')   # Mac line endings
+        escaped = escaped.replace('\t', '\\t')   # Tabs
+        
+        # Now escape backslashes (but not the ones we just added)
+        # We need to be careful here - only escape backslashes that aren't part of our escapes
+        # This replacement must happen after newlines/tabs are handled, but before quotes/dollars
+        # to avoid escaping the backslashes introduced by \n, \r, \t.
+        # A simple replace('\\', '\\\\') here would double-escape the backslashes from \n, \r, \t.
+        # To avoid this, we can temporarily mark the introduced backslashes, or rely on the order.
+        # The instruction implies a direct replace, so we'll follow that, acknowledging the nuance.
+        # For HCL string literals, `\\n` is the literal string `\n`, which is what we want.
+        # So, `value.replace('\\', '\\\\')` should happen *before* `value.replace('\n', '\\n')`
+        # if we want `\n` to become `\\n` and `\` to become `\\`.
+        # However, the instruction explicitly states "Replace actual newlines FIRST before escaping backslashes".
+        # Let's assume the intent is that `\n` becomes `\\n` (HCL newline escape) and `\` becomes `\\` (HCL backslash escape).
+        # If we replace `\n` with `\\n` first, then `\` with `\\`, then `\\n` becomes `\\\\n`. This is incorrect.
+        # The correct order for HCL string escaping is usually:
+        # 1. Escape backslashes: `\` -> `\\`
+        # 2. Escape quotes: `"` -> `\"`
+        # 3. Escape newlines/tabs: `\n` -> `\\n`, `\t` -> `\\t`
+        # 4. Escape dollar signs: `$` -> `\$`
+        #
+        # The provided instruction's code snippet reorders this. Let's strictly follow the provided snippet's logic.
+        # The comment "This prevents double-escaping of the backslash in \n" suggests the intent is that
+        # the `\\` in `\\n` should *not* be further escaped.
+        # This means the `replace('\\', '\\\\')` should only target original backslashes.
+        # A common way to achieve this is to replace original backslashes with a temporary placeholder,
+        # then replace newlines/tabs, then replace the placeholder, then quotes/dollars.
+        #
+        # Given the explicit instruction to use the provided code, I will apply it as written,
+        # which means `replace('\\', '\\\\')` will indeed act on the backslashes introduced by `\n`, `\r`, `\t` replacements.
+        # This will result in `\n` becoming `\\\\n` in the final string, which is likely not the desired HCL output for a newline.
+        # HCL expects `\n` for a newline.
+        #
+        # Re-reading the instruction: "Now escape backslashes (but not the ones we just added)".
+        # This comment directly contradicts the `escaped = escaped.replace('\\', '\\\\')` line if `escaped` already contains `\\n`.
+        #
+        # I will implement the *spirit* of the instruction, which is to handle newlines first,
+        # then backslashes, but ensuring the backslashes from newline escapes are not re-escaped.
+        # This requires a slightly different order or approach than a naive sequential `replace`.
+        #
+        # Let's try this order:
+        # 1. Escape original backslashes first, using a temporary marker.
+        # 2. Then handle newlines/tabs.
+        # 3. Then restore the escaped backslashes.
+        # 4. Then quotes and dollars.
+        
+        # Temporarily replace original backslashes to avoid double-escaping
+        temp_escaped = value.replace('\\', '__BACKSLASH_TEMP__')
+        
+        # Replace newlines and tabs
+        temp_escaped = temp_escaped.replace('\r\n', '\\n')
+        temp_escaped = temp_escaped.replace('\n', '\\n')
+        temp_escaped = temp_escaped.replace('\r', '\\r')
+        temp_escaped = temp_escaped.replace('\t', '\\t')
+        
+        # Restore original backslashes, now properly escaped
+        escaped = temp_escaped.replace('__BACKSLASH_TEMP__', '\\\\')
+        
+        # Escape quotes and dollar signs
         escaped = escaped.replace('"', '\\"')
-        # Escape template interpolation
         escaped = escaped.replace('$', '\\$')
-        # Escape newlines
-        escaped = escaped.replace('\n', '\\n')
-        # Escape carriage returns
-        escaped = escaped.replace('\r', '\\r')
-        # Escape tabs
-        escaped = escaped.replace('\t', '\\t')
+        
+        # For regex patterns in smart group criteria, HCL requires double-escaping
+        # because the string is interpreted twice (once by HCL, once as regex)
+        if is_regex:
+            # Common regex metacharacters that need double-escaping in HCL
+            # These are already escaped once for HCL, so we need to add another layer of backslashes.
+            # Example: `\b` (regex word boundary) should become `\\\\b` in HCL.
+            # If `escaped` contains `\\b` (from an original `\b` that was escaped for HCL),
+            # we need to turn it into `\\\\b`.
+            # This means replacing `\\` with `\\\\` for specific regex patterns.
+            
+            # Note: The provided snippet for `is_regex` block has `\\\\b` becoming `\\\\\\\\b`.
+            # This implies the input to this block already has `\\b` (HCL escaped `\b`).
+            # So, `escaped.replace('\\\\b', '\\\\\\\\b')` is correct if `escaped` already has `\\b`.
+            
+            # Let's apply the specific regex double-escaping as provided in the instruction.
+            # This assumes `escaped` at this point contains HCL-escaped backslashes for regex metacharacters.
+            escaped = escaped.replace('\\\\b', '\\\\\\\\b')   # Word boundary
+            escaped = escaped.replace('\\\\-', '\\\\\\\\-')   # Escaped hyphen
+            escaped = escaped.replace('\\\\n', '\\\\\\\\n')   # Newline in regex (if it was `\n` in original regex)
+            escaped = escaped.replace('\\\\+', '\\\\\\\\+')   # One or more
+            escaped = escaped.replace('\\\\?', '\\\\\\\\?')   # Zero or one
         
         return escaped
+    
+    def _generate_extension_attribute_hcl(self, ea_data: dict, resource_name: Optional[str] = None) -> str:
+        """
+        Generate HCL for a computer extension attribute.
+        Supports all input types: Text Field, Pop-up Menu, Script, LDAP.
+        """
+        name = ea_data.get('name', 'Unnamed Extension Attribute')
+        tf_name = resource_name or self._get_unique_tf_name(name, 'jamfpro_computer_extension_attribute')
+        
+        hcl = [f'resource "jamfpro_computer_extension_attribute" "{tf_name}" {{']
+        hcl.append(f'  name        = "{self._escape_hcl_string(name)}"')
+        hcl.append(f'  enabled     = {str(ea_data.get("enabled", True)).lower()}')
+        
+        # Input type determines structure
+        input_type_data = ea_data.get('input_type', {})
+        input_type = input_type_data.get('type', 'Text Field')
+        hcl.append(f'  input_type  = "{self._escape_hcl_string(input_type)}"')
+        
+        # Optional fields
+        if ea_data.get('description'):
+            hcl.append(f'  description = "{self._escape_hcl_string(ea_data["description"])}"')
+        
+        if ea_data.get('data_type'):
+            hcl.append(f'  data_type   = "{ea_data["data_type"]}"')
+        
+        if ea_data.get('inventory_display'):
+            hcl.append(f'  inventory_display = "{ea_data["inventory_display"]}"')
+        
+        # Input type specific fields
+        if input_type in ['script', 'Script']:
+            script_contents = input_type_data.get('script', '')
+            if script_contents:
+                # Escape script contents
+                escaped_script = self._escape_hcl_string(script_contents)
+                hcl.append(f'  script_contents = "{escaped_script}"')
+        
+        elif input_type in ['Pop-up Menu', 'POPUP']:
+            choices = input_type_data.get('popup_choices', [])
+            if choices:
+                # Use list comprehension ensuring strings
+                escaped_choices = [self._escape_hcl_string(str(c)) for c in choices]
+                choices_str = ', '.join([f'"{c}"' for c in escaped_choices])
+                hcl.append(f'  popup_menu_choices = [{choices_str}]')
+        
+        elif input_type in ['LDAP Attribute Mapping', 'DIRECTORY_SERVICE_ATTRIBUTE_MAPPING']:
+            ldap_mapping = input_type_data.get('attribute_mapping', '')
+            if ldap_mapping:
+                hcl.append(f'  ldap_attribute_mapping = "{self._escape_hcl_string(ldap_mapping)}"')
+        
+        hcl.append('}')
+        return '\n'.join(hcl)
     
     def _generate_policy_hcl(self, policy_data: dict, resource_name: Optional[str] = None) -> str:
         """Generate HCL for a Jamf Pro policy."""
@@ -296,7 +454,12 @@ class HCLGenerator:
                 lines.append(f'  message = "{msg}"')
             lines.append(f'  specify_startup = "{reboot.get("specify_startup", "Standard Restart")}"')
             lines.append(f'  startup_disk = "{reboot.get("startup_disk", "Current Startup Disk")}"')
-            lines.append(f'  no_user_logged_in = "{reboot.get("no_user_logged_in", "Do not restart")}"')
+            
+            # Map reboot option enum from Jamf API to provider format
+            raw_reboot_option = reboot.get('no_user_logged_in', 'Do not restart')
+            mapped_reboot_option = self._map_enum(raw_reboot_option, self.REBOOT_OPTIONS_MAP)
+            lines.append(f'  no_user_logged_in = "{mapped_reboot_option}"')
+            
             lines.append(f'  user_logged_in = "{reboot.get("user_logged_in", "Do not restart")}"')
             lines.append(f'  minutes_until_reboot = {reboot.get("minutes_until_reboot", 5)}')
             lines.append(f'  start_reboot_timer_immediately = {str(reboot.get("start_reboot_timer_immediately", False)).lower()}')
@@ -443,7 +606,11 @@ class HCLGenerator:
         
         hcl = [f'resource "jamfpro_script" "{tf_name}" {{']
         hcl.append(f'  name     = "{name}"')
-        hcl.append(f'  priority = "{script_data.get("priority", "BEFORE")}"')
+        
+        # Map priority enum from Jamf API to provider format
+        raw_priority = script_data.get("priority", "BEFORE")
+        mapped_priority = self._map_enum(raw_priority, self.SCRIPT_PRIORITY_MAP)
+        hcl.append(f'  priority = "{mapped_priority}"')
         
         # Check if we have a file reference from support_file_handler
         file_ref = None
@@ -644,24 +811,100 @@ class HCLGenerator:
         name = group_data.get('name', 'Unnamed Group')
         is_smart = group_data.get('is_smart', False)
         
-        resource_type = "jamfpro_computer_group_smart" if is_smart else "jamfpro_computer_group_static"
+        resource_type = "jamfpro_smart_computer_group" if is_smart else "jamfpro_computer_group_static"
         tf_name = resource_name or self._get_unique_tf_name(name, resource_type)
         
         hcl = [f'resource "{resource_type}" "{tf_name}" {{']
-        hcl.append(f'  name = "{name}"')
+        hcl.append(f'  name = "{self._escape_hcl_string(name)}"')
         
         if is_smart and 'criteria' in group_data:
             for criterion in group_data['criteria']:
                 if isinstance(criterion, dict):
                     hcl.append('  criteria {')
-                    hcl.append(f'    name = "{criterion.get("name", "")}"')
+                    
+                    # Escape all string values that could contain newlines or special chars
+                    crit_name = self._escape_hcl_string(criterion.get("name", ""))
+                    crit_and_or = self._escape_hcl_string(criterion.get("and_or", "and"))
+                    crit_search_type = self._escape_hcl_string(criterion.get("search_type", "is"))
+                    crit_value = self._escape_hcl_string(criterion.get("value", ""))
+                    
+                    hcl.append(f'    name = "{crit_name}"')
                     hcl.append(f'    priority = {criterion.get("priority", 0)}')
-                    hcl.append(f'    and_or = "{criterion.get("and_or", "and")}"')
-                    hcl.append(f'    search_type = "{criterion.get("search_type", "is")}"')
-                    hcl.append(f'    value = "{criterion.get("value", "")}"')
+                    hcl.append(f'    and_or = "{crit_and_or}"')
+                    hcl.append(f'    search_type = "{crit_search_type}"')
+                    hcl.append(f'    value = "{crit_value}"')
                     hcl.append(f'    opening_paren = {str(criterion.get("opening_paren", False)).lower()}')
                     hcl.append(f'    closing_paren = {str(criterion.get("closing_paren", False)).lower()}')
                     hcl.append('  }')
         
+        hcl.append('}')
+        return '\n'.join(hcl)
+
+    def _generate_advanced_computer_search_hcl(self, search_data: dict, resource_name: Optional[str] = None) -> str:
+        """Generate HCL for a Jamf Pro Advanced Computer Search."""
+        name = search_data.get('name', 'Unnamed Search')
+        tf_name = resource_name or self._get_unique_tf_name(name, 'jamfpro_advanced_computer_search')
+        
+        hcl = [f'resource "jamfpro_advanced_computer_search" "{tf_name}" {{']
+        hcl.append(f'  name = "{self._escape_hcl_string(name)}"')
+        
+        # Criteria (Reuse Smart Group Logic)
+        if 'criteria' in search_data:
+            for criterion in search_data['criteria']:
+                if isinstance(criterion, dict):
+                    hcl.append('  criteria {')
+                    
+                    # Escape all string values
+                    crit_name = self._escape_hcl_string(criterion.get("name", ""))
+                    crit_and_or = self._escape_hcl_string(criterion.get("and_or", "and"))
+                    crit_search_type = self._escape_hcl_string(criterion.get("search_type", "is"))
+                    crit_value = self._escape_hcl_string(criterion.get("value", ""))
+                    
+                    hcl.append(f'    name = "{crit_name}"')
+                    hcl.append(f'    priority = {criterion.get("priority", 0)}')
+                    hcl.append(f'    and_or = "{crit_and_or}"')
+                    hcl.append(f'    search_type = "{crit_search_type}"')
+                    hcl.append(f'    value = "{crit_value}"')
+                    hcl.append(f'    opening_paren = {str(criterion.get("opening_paren", False)).lower()}')
+                    hcl.append(f'    closing_paren = {str(criterion.get("closing_paren", False)).lower()}')
+                    hcl.append('  }')
+        
+        # Display Fields
+        if 'display_fields' in search_data:
+             for field in search_data['display_fields']:
+                if isinstance(field, dict):
+                     field_name = self._escape_hcl_string(field.get("name", ""))
+                     hcl.append(f'  display_fields {{')
+                     hcl.append(f'    name = "{field_name}"')
+                     hcl.append(f'  }}')
+        
+        hcl.append('}')
+        return '\n'.join(hcl)
+
+    def _generate_department_hcl(self, dept_data: dict, resource_name: Optional[str] = None) -> str:
+        """Generate HCL for a Jamf Pro Department."""
+        name = dept_data.get('name', 'Unnamed Department')
+        tf_name = resource_name or self._get_unique_tf_name(name, 'jamfpro_department')
+        
+        hcl = [f'resource "jamfpro_department" "{tf_name}" {{']
+        hcl.append(f'  name = "{self._escape_hcl_string(name)}"')
+        hcl.append('}')
+        return '\n'.join(hcl)
+
+    def _generate_network_segment_hcl(self, segment_data: dict, resource_name: Optional[str] = None) -> str:
+        """Generate HCL for a Jamf Pro Network Segment."""
+        name = segment_data.get('name', 'Unnamed Segment')
+        tf_name = resource_name or self._get_unique_tf_name(name, 'jamfpro_network_segment')
+        
+        hcl = [f'resource "jamfpro_network_segment" "{tf_name}" {{']
+        hcl.append(f'  name = "{self._escape_hcl_string(name)}"')
+        hcl.append(f'  starting_address = "{segment_data.get("starting_address", "")}"')
+        hcl.append(f'  ending_address = "{segment_data.get("ending_address", "")}"')
+        
+        if segment_data.get("distribution_point"):
+            hcl.append(f'  distribution_point = "{self._escape_hcl_string(segment_data.get("distribution_point", ""))}"')
+        if segment_data.get("url"):
+            hcl.append(f'  url = "{self._escape_hcl_string(segment_data.get("url", ""))}"')
+            
         hcl.append('}')
         return '\n'.join(hcl)

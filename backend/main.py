@@ -429,7 +429,87 @@ async def bulk_export_resources(request: BulkExportRequest):
         # 3. Prepare for sorting
         print(f"[BULK EXPORT] Preparing resources for sorting...")
         resources_by_type = defaultdict(list)
+
+        # Computer groups (smart and static)
+        print(f"[BULK EXPORT] Fetching computer groups...")
+        all_computer_groups = await client.get_all_computer_groups()
+        
+        # Filter out static groups (not supported by terraform-provider-jamfpro)
+        static_groups = [g for g in all_computer_groups if not g.get('is_smart', False)]
+        smart_groups = [g for g in all_computer_groups if g.get('is_smart', False)]
+        
+        if static_groups:
+            print(f"[BULK EXPORT] Skipping {len(static_groups)} static group(s) (not supported by provider)")
+        
+        resources_by_type['smart-groups'] = smart_groups
+        resources_by_type['_static_groups_skipped'] = len(static_groups)  # Track for validation report
+
+        # Extension Attributes
+        print(f"[BULK EXPORT] Fetching computer extension attributes...")
+        extension_attributes = await client.list_computer_extension_attributes()
+        
+        # Fetch details for each EA (parallel)
+        async def fetch_ea_detail(ea):
+            try:
+                return await client.get_computer_extension_attribute_detail(ea['id'])
+            except Exception as e:
+                print(f"Error fetching EA {ea['id']}: {e}")
+                return None
+
+        ea_tasks = [fetch_ea_detail(ea) for ea in extension_attributes]
+        ea_details = await asyncio.gather(*ea_tasks)
+        resources_by_type['extension-attributes'] = [ea for ea in ea_details if ea]
+        print(f"[BULK EXPORT] Fetched {len(resources_by_type['extension-attributes'])} extension attributes")
+
+        # Advanced Computer Searches
+        print(f"[BULK EXPORT] Fetching advanced computer searches...")
+        adv_searches = await client.list_advanced_computer_searches()
+        async def fetch_search_detail(s):
+            try:
+                return await client.get_advanced_computer_search_detail(s['id'])
+            except Exception as e:
+                print(f"Error fetching search {s['id']}: {e}")
+                return None
+        search_tasks = [fetch_search_detail(s) for s in adv_searches]
+        search_details = await asyncio.gather(*search_tasks)
+        resources_by_type['advanced-computer-searches'] = [s for s in search_details if s]
+        print(f"[BULK EXPORT] Fetched {len(resources_by_type['advanced-computer-searches'])} advanced searches")
+
+        # Departments
+        print(f"[BULK EXPORT] Fetching departments...")
+        departments = await client.list_departments()
+        async def fetch_dept_detail(d):
+            try:
+                return await client.get_department_detail(d['id'])
+            except Exception as e:
+                print(f"Error fetching department {d['id']}: {e}")
+                return None
+        dept_tasks = [fetch_dept_detail(d) for d in departments]
+        dept_details = await asyncio.gather(*dept_tasks)
+        resources_by_type['departments'] = [d for d in dept_details if d]
+        print(f"[BULK EXPORT] Fetched {len(resources_by_type['departments'])} departments")
+
+        # Network Segments
+        print(f"[BULK EXPORT] Fetching network segments...")
+        segments = await client.list_network_segments()
+        async def fetch_segment_detail(s):
+            try:
+                return await client.get_network_segment_detail(s['id'])
+            except Exception as e:
+                print(f"Error fetching network segment {s['id']}: {e}")
+                return None
+        segment_tasks = [fetch_segment_detail(s) for s in segments]
+        segment_details = await asyncio.gather(*segment_tasks)
+        resources_by_type['network-segments'] = [s for s in segment_details if s]
+        print(f"[BULK EXPORT] Fetched {len(resources_by_type['network-segments'])} network segments")
+
         for (r_type, _), (orig_type, r_data) in all_unique_resources.items():
+            # Skip resources we've already fetched manually with full details
+            # This also prevents static-groups from being added back after we explicitly filtered them
+            if orig_type in ['smart-groups', 'static-groups', 'computer_groups', 
+                           'extension-attributes', 'advanced-computer-searches', 
+                           'departments', 'network-segments']:
+                continue
             resources_by_type[orig_type].append(r_data)
 
         # 4. Topological Sort
@@ -478,11 +558,19 @@ async def bulk_export_resources(request: BulkExportRequest):
                 support_handler=support_handler
             )
             
+            # Add static groups count to validation result
+            validation_result['_static_groups_skipped'] = resources_by_type.get('_static_groups_skipped', 0)
+            
             # Generate validation report
             validation_report = generate_validation_report(validation_result)
             
-            # Write provider configuration with consistent version
-            provider_hcl = f'''terraform {{
+            # Write provider configuration            # Generate provider.tf
+            instance_url = request.credentials.url
+            # Ensure https:// prefix
+            if not instance_url.startswith('http'):
+                instance_url = f'https://{instance_url}'
+            
+            provider_hcl = f"""terraform {{
   required_providers {{
     jamfpro = {{
       source  = "deploymenttheory/jamfpro"
@@ -492,20 +580,27 @@ async def bulk_export_resources(request: BulkExportRequest):
 }}
 
 provider "jamfpro" {{
-  jamfpro_instance_fqdn = "{request.credentials.url.replace('https://', '').replace('http://', '').rstrip('/')}"
+  jamfpro_instance_fqdn = "{instance_url}"
   auth_method           = "basic"
   # Authentication - configure via environment variables:
-  # export JAMFPRO_BASIC_AUTH_USERNAME="your-username"
-  # export JAMFPRO_BASIC_AUTH_PASSWORD="your-password"
+  # export JAMFPRO_BASIC_USERNAME="your-username"
+  # export JAMFPRO_BASIC_PASSWORD="your-password"
   # Or use client credentials:
   # export JAMFPRO_CLIENT_ID="your-client-id"
   # export JAMFPRO_CLIENT_SECRET="your-client-secret"
 }}
-'''
+"""
             zip_file.writestr("provider.tf", provider_hcl)
             
             # Write validation report
             zip_file.writestr("VALIDATION_REPORT.md", validation_report)
+            
+            # Add mobileconfig converter utility script
+            converter_script_path = os.path.join(os.path.dirname(__file__), '..', 'docs', 'mobileconfig_converter.sh')
+            if os.path.exists(converter_script_path):
+                with open(converter_script_path, 'r') as f:
+                    zip_file.writestr("utils/mobileconfig_converter.sh", f.read())
+                print(f"[BULK EXPORT] Added mobileconfig converter utility")
             
             # Get summary of support files
             support_summary = support_handler.get_files_summary()
