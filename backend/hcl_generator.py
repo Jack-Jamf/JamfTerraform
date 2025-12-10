@@ -264,7 +264,8 @@ class HCLGenerator:
         
         # Escape quotes and dollar signs
         escaped = escaped.replace('"', '\\"')
-        escaped = escaped.replace('$', '\\$')
+        # In HCL, $$ is used for a literal $ (not \$)
+        escaped = escaped.replace('$', '$$')
         
         # For regex patterns in smart group criteria, HCL requires double-escaping
         # because the string is interpreted twice (once by HCL, once as regex)
