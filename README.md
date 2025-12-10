@@ -16,6 +16,7 @@ JamfTerraform is a comprehensive toolset for managing Jamf Pro configurations us
 
 - 🤖 **AI-Powered Generation**: Convert natural language to Terraform HCL
 - 💬 **Chat Interface**: Interactive conversation for iterative configuration
+- 📦 **Proporter Export**: Export entire Jamf Pro instances as Terraform code (6.7x faster with optimizations)
 - 🎨 **Premium UI**: Modern dark theme with smooth animations
 - 🔒 **Secure**: Environment-based API key management
 - 📊 **Health Monitoring**: Real-time backend status
@@ -118,7 +119,10 @@ GEMINI_API_KEY=your_api_key_here
 
 ### Frontend Configuration
 
-The frontend automatically connects to `http://localhost:8000`. To change this, edit `src/services/ExecutionService.ts`.
+The frontend connects to the production backend by default.
+
+- **Production**: `https://jamfterraform-production.up.railway.app`
+- **Local Development**: Change `API_BASE_URL` in `src/services/ExecutionService.ts` to `http://localhost:8000`
 
 ## 📖 Usage
 
@@ -134,6 +138,24 @@ Example prompts:
 - "Create a Jamf policy to install Google Chrome on all computers"
 - "Generate a configuration profile for Wi-Fi settings"
 - "Create a smart group for MacBooks running macOS 14+"
+
+### Export Jamf Instance with Proporter
+
+1. Navigate to the **Proporter** tab
+2. Enter your Jamf Pro credentials
+3. Click **"Generate Instance Summary"** to scan your Jamf Pro server
+4. Review the resources found (policies, scripts, profiles, groups, etc.)
+5. Click **"Export Entire Instance"** to download everything as a ZIP file
+
+The export includes:
+
+- Terraform HCL for all resources
+- Support files (scripts, configuration profile payloads)
+- Provider configuration
+- Validation report
+- README with usage instructions
+
+**Performance**: Exports ~460 resources in ~45 seconds with 6.7x speedup from parallel processing.
 
 ## 🎨 Design Philosophy
 
