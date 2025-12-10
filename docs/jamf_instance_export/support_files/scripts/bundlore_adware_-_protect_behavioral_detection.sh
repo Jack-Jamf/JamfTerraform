@@ -1,0 +1,26 @@
+#!/bin/sh
+
+BundloreAdwarePersistence () {
+
+plist='<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.softwareupdater.fake.plist</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/path/to/binary</string>
+    </array>
+    <key>StartInterval</key>
+    <integer>900</integer>
+</dict>
+</plist>'
+
+echo "$plist" > "/Library/LaunchDaemons/com.softwareupdater.fake.plist.plist"
+
+}
+
+BundloreAdwarePersistence
+
+open -R '/Library/LaunchDaemons/com.softwareupdater.fake.plist.plist'

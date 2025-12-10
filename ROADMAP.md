@@ -145,6 +145,16 @@
 - [ ] **Custom Recipe Creation** (in UI)
 - [ ] **Recipe Versioning**
 
+#### App Catalog Improvements
+
+- [ ] **Live API Catalog Query (Optional Enhancement)**
+  - Use undocumented `/api/v1/app-installers/titles` endpoint
+  - Hybrid approach: cached list by default, live API when Jamf connected
+  - Provides real-time accuracy for users with Jamf credentials
+  - Maintains fast experience for ChatBot-only users
+  - **Trade-off**: Adds latency (~200-500ms) and dependency on undocumented API
+  - **Current**: Automated weekly refresh of cached list is sufficient
+
 ---
 
 ### **Phase 5: Intelligent Chat & Jamf Import** (Future)

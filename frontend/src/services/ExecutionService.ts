@@ -1,7 +1,8 @@
 import type { GenerateHCLRequest, GenerateHCLResponse, JamfCredentials, JamfAuthResponse } from '../types';
 
-// Using Railway backend
-const API_BASE_URL = 'https://jamfaform-production.up.railway.app';
+// Production API URL
+export const API_BASE_URL = 'https://jamfaform-production.up.railway.app';
+// const API_BASE_URL = 'http://localhost:8000';  // For local testing
 
 
 export interface JamfResourceListResponse {
@@ -52,12 +53,23 @@ export class ExecutionService {
       }
       
       // Verify we're receiving a ZIP file, not an error response
+      // Note: CORS must expose Content-Type header for this check to work
       const contentType = response.headers.get('Content-Type');
-      if (!contentType || !contentType.includes('application/zip')) {
+      const contentDisposition = response.headers.get('Content-Disposition');
+      const contentLength = response.headers.get('Content-Length');
+      
+      console.log('Export response headers:', {
+        contentType,
+        contentDisposition,
+        contentLength
+      });
+      
+      // Only validate Content-Type if it's available (CORS might not expose it)
+      if (contentType && !contentType.includes('application/zip') && !contentType.includes('application/octet-stream')) {
         console.error(`Unexpected content type: ${contentType}`);
         const errorBody = await response.text();
         console.error('Response body:', errorBody);
-        throw new Error('Server returned invalid response. Expected ZIP file but received: ' + (contentType || 'unknown type'));
+        throw new Error('Server returned invalid response. Expected ZIP file but received: ' + contentType);
       }
       
       return await response.blob();

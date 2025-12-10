@@ -37,6 +37,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Type", "Content-Disposition", "Content-Length"]  # Expose headers to JavaScript
 )
 
 
@@ -356,21 +357,25 @@ async def bulk_export_resources(request: BulkExportRequest):
         # Deduplication cache: (type, id) -> data
         all_unique_resources = {}
 
-        # 1. Fetch all requested resources + dependencies IN PARALLEL
+        # 1. Fetch all requested resources + dependencies IN PARALLEL (with rate limiting)
         print(f"[BULK EXPORT] Received {len(request.resources)} resources to export")
         
-        async def fetch_single_resource(idx, res):
-            """Helper to fetch a single resource with error handling."""
-            print(f"[BULK EXPORT] Processing {idx+1}/{len(request.resources)}: {res.type} ID {res.id}")
-            try:
-                fetched = await fetcher.fetch_all(res.type, res.id, recursive=request.include_dependencies)
-                print(f"[BULK EXPORT] Fetched {len(fetched)} items for {res.type} {res.id}")
-                return fetched
-            except Exception as e:
-                print(f"Error fetching {res.type} {res.id} for bulk export: {e}")
-                return []
+        # Limit concurrent requests to avoid overwhelming Jamf API (prevents 503 errors)
+        semaphore = asyncio.Semaphore(10)  # Max 10 concurrent requests
         
-        # Fetch all resources in parallel (OPTIMIZATION: 5-10x speedup)
+        async def fetch_single_resource(idx, res):
+            """Helper to fetch a single resource with error handling and rate limiting."""
+            async with semaphore:  # Limit concurrency
+                print(f"[BULK EXPORT] Processing {idx+1}/{len(request.resources)}: {res.type} ID {res.id}")
+                try:
+                    fetched = await fetcher.fetch_all(res.type, res.id, recursive=request.include_dependencies)
+                    print(f"[BULK EXPORT] Fetched {len(fetched)} items for {res.type} {res.id}")
+                    return fetched
+                except Exception as e:
+                    print(f"Error fetching {res.type} {res.id} for bulk export: {e}")
+                    return []
+        
+        # Fetch all resources in parallel (OPTIMIZATION: 5-10x speedup, rate-limited)
         fetch_tasks = [fetch_single_resource(idx, res) for idx, res in enumerate(request.resources)]
         all_fetched_results = await asyncio.gather(*fetch_tasks, return_exceptions=True)
         
@@ -392,20 +397,22 @@ async def bulk_export_resources(request: BulkExportRequest):
 
         print(f"[BULK EXPORT] Total unique resources after fetching: {len(all_unique_resources)}")
         
-        # 2. Process support files IN PARALLEL (OPTIMIZATION: 2-3x speedup)
+        # 2. Process support files IN PARALLEL (OPTIMIZATION: 2-3x speedup, rate-limited)
+        print("[BULK EXPORT] Starting support file processing...")
         async def process_single_support_file(r_type, r_id_str, orig_type, r_data):
-            """Helper to process a single support file with error handling."""
-            r_id = int(r_id_str) if r_id_str.isdigit() else None
-            if r_id is None:
-                return
-            
-            try:
-                if orig_type == 'scripts':
-                    await support_handler.process_script(r_id, r_data)
-                elif orig_type == 'config-profiles':
-                    await support_handler.process_config_profile(r_id, r_data)
-            except Exception as e:
-                print(f"Error processing support file for {orig_type} {r_id}: {e}")
+            """Helper to process a single support file with error handling and rate limiting."""
+            async with semaphore:  # Reuse same semaphore for rate limiting
+                r_id = int(r_id_str) if r_id_str.isdigit() else None
+                if r_id is None:
+                    return
+                
+                try:
+                    if orig_type == 'scripts':
+                        await support_handler.process_script(r_id, r_data)
+                    elif orig_type == 'config-profiles':
+                        await support_handler.process_config_profile(r_id, r_data)
+                except Exception as e:
+                    print(f"Error processing support file for {orig_type} {r_id}: {e}")
         
         # Process all support files in parallel
         support_tasks = [
@@ -416,25 +423,40 @@ async def bulk_export_resources(request: BulkExportRequest):
         
         if support_tasks:
             await asyncio.gather(*support_tasks, return_exceptions=True)
+        print(f"[BULK EXPORT] Support file processing complete")
 
 
         # 3. Prepare for sorting
+        print(f"[BULK EXPORT] Preparing resources for sorting...")
         resources_by_type = defaultdict(list)
         for (r_type, _), (orig_type, r_data) in all_unique_resources.items():
             resources_by_type[orig_type].append(r_data)
 
         # 4. Topological Sort
+        print(f"[BULK EXPORT] Running topological sort...")
         sorted_tuples = resolver.topological_sort(resources_by_type)
+        print(f"[BULK EXPORT] Topological sort complete: {len(sorted_tuples)} resources")
         
         # 5. Organize content by file type
+        print(f"[BULK EXPORT] Generating HCL...")
         files_content = defaultdict(list)
         
         for r_type, r_data in sorted_tuples:
-            chunk = hcl_gen.generate_resource_hcl(r_type, r_data)
-            filename = f"{r_type}.tf"
-            files_content[filename].append(chunk)
+            try:
+                chunk = hcl_gen.generate_resource_hcl(r_type, r_data)
+                filename = f"{r_type}.tf"
+                files_content[filename].append(chunk)
+            except Exception as e:
+                # Log which resource failed but continue
+                r_id = r_data.get('id') or r_data.get('general', {}).get('id', 'unknown')
+                print(f"[ERROR] Failed to generate HCL for {r_type} ID {r_id}: {e}")
+                import traceback
+                traceback.print_exc()
+                # Continue with other resources
+        print(f"[BULK EXPORT] HCL generation complete: {len(files_content)} files")
 
         # 6. Create ZIP with support files
+        print(f"[BULK EXPORT] Creating ZIP file...")
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
             # Write resource HCL files

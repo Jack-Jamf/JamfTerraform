@@ -1,6 +1,7 @@
 """LLMService for interacting with Gemini API."""
 import google.generativeai as genai
 import json
+from pathlib import Path
 from config import GEMINI_API_KEY, GEMINI_MODEL, SYSTEM_PROMPT
 from schemas import UserIntent, PolicyIntent, ScriptIntent, CategoryIntent, PackageIntent, SmartGroupIntent, StaticGroupIntent, AppInstallerIntent, RawHCLIntent
 from hcl_generator import HCLGenerator
@@ -16,23 +17,52 @@ class LLMService:
             raise ValueError("GEMINI_API_KEY environment variable is not set")
         
         genai.configure(api_key=GEMINI_API_KEY)
+        
+        # Track catalog file for hot-reloading (relative to this module)
+        module_dir = Path(__file__).parent
+        self.catalog_path = module_dir / "app_catalog.json"
+        self.catalog_mtime = self._get_catalog_mtime()
+        
+        # Load catalog and initialize model
         self.app_catalog = self._load_app_catalog()
         self.validator = IntentValidator(self.app_catalog)
-        
+        self.model = self._create_model_with_catalog()
+    
+    def _get_catalog_mtime(self) -> float:
+        """Get the modification time of the catalog file."""
+        try:
+            return self.catalog_path.stat().st_mtime
+        except FileNotFoundError:
+            return 0.0
+    
+    def _create_model_with_catalog(self) -> genai.GenerativeModel:
+        """Create a GenerativeModel with catalog injected into system prompt."""
         # Inject the full App Catalog into the System Prompt for Semantic Search
         catalog_str = "\n".join([f'- "{title}"' for title in self.app_catalog])
         enhanced_system_prompt = f"{SYSTEM_PROMPT}\n\n## OFFICIAL JAMF APP CATALOG (Strict List):\n{catalog_str}\n\n[INSTRUCTION]: When a user requests an app (e.g. 'PDF Editor'), SEMANTICALLY MATCH it to one of the titles above. ONLY use titles from this list."
 
-        self.model = genai.GenerativeModel(
+        return genai.GenerativeModel(
             model_name=GEMINI_MODEL,
             system_instruction=enhanced_system_prompt,
             generation_config={"response_mime_type": "application/json"}
         )
+    
+    def _check_catalog_freshness(self) -> None:
+        """Check if catalog file has been updated and reload if necessary."""
+        current_mtime = self._get_catalog_mtime()
+        
+        if current_mtime > self.catalog_mtime:
+            print("🔄 App catalog file updated, reloading...")
+            self.catalog_mtime = current_mtime
+            self.app_catalog = self._load_app_catalog()
+            self.validator = IntentValidator(self.app_catalog)
+            self.model = self._create_model_with_catalog()
+            print(f"✅ Reloaded {len(self.app_catalog)} app titles")
 
     def _load_app_catalog(self) -> list[str]:
         """Load known Jamf App Catalog titles for validation."""
         try:
-            with open("app_catalog.json", "r") as f:
+            with open(self.catalog_path, "r") as f:
                 return json.load(f)
         except Exception:
             return []
@@ -41,6 +71,9 @@ class LLMService:
         """
         Generate HCL configuration based on user prompt via structured intent.
         """
+        # Check for catalog updates before generating
+        self._check_catalog_freshness()
+        
         # Construct the full prompt
         full_prompt = user_prompt
         if context:

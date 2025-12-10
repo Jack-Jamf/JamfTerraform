@@ -1,0 +1,70 @@
+name: Update App Catalog
+
+on:
+  schedule:
+    # Run weekly on Monday at 9am UTC
+    - cron: "0 9 * * 1"
+  workflow_dispatch: # Allow manual trigger from GitHub UI
+
+jobs:
+  update-catalog:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install beautifulsoup4 requests lxml
+
+      - name: Run catalog scraper
+        id: scraper
+        run: |
+          cd /home/runner/work/JamfTerraform/JamfTerraform
+          python scripts/update_app_catalog.py
+        continue-on-error: true
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if git diff --quiet backend/app_catalog.json; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No changes to commit"
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Changes detected in catalog"
+          fi
+
+      - name: Commit and push changes
+        if: steps.check_changes.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add backend/app_catalog.json
+          git commit -m "chore: auto-update App Catalog [skip ci]"
+          git push
+
+      - name: Create summary
+        if: always()
+        run: |
+          echo "### App Catalog Update Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ steps.check_changes.outputs.changed }}" == "true" ]]; then
+            echo "✅ Catalog was updated and committed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Changes:**" >> $GITHUB_STEP_SUMMARY
+            git diff HEAD~1 backend/app_catalog.json | head -50 >> $GITHUB_STEP_SUMMARY || true
+          else
+            echo "ℹ️ No changes to catalog" >> $GITHUB_STEP_SUMMARY
+          fi

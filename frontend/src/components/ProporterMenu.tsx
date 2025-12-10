@@ -68,28 +68,41 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
     
     setLoading(true);
     setError(null);
-    const resources = Array.from(selection).map(key => {
+    const selectedResources = Array.from(selection).map(key => {
         const [type, idStr] = key.split(':');
         return { type, id: parseInt(idStr) };
     });
 
+    
     try {
-      const blob = await ExecutionService.bulkExport(credentials, resources, includeDependencies);
-      setLoading(false);
-
+      const blob = await ExecutionService.bulkExport(credentials, selectedResources, includeDependencies);
+      
+      console.log('Export blob:', { size: blob.size, type: blob.type });
+      
+      if (blob.size === 0) {
+        throw new Error('Export failed: Received empty file');
+      }
+      
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'jamf_bulk_export.zip';
+      a.download = 'jamf_terraform_export.zip';
+      a.style.display = 'none';
       document.body.appendChild(a);
+      
+      console.log('Triggering download');
       a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      // Clear selection after download? Maybe optional.
-      // setSelection(new Set()); 
-      // setIsSelecting(false);
+      
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
+      
+      setLoading(false);
+      setExportPhase('idle');
     } catch (err) {
       setLoading(false);
+      setExportPhase('idle');
       setError(err instanceof Error ? err.message : 'Bulk export failed');
     }
   };
@@ -147,19 +160,33 @@ const ProporterMenu: React.FC<ProporterMenuProps> = ({ isEnabled, credentials })
       }
     }
     
+    
     try {
       const blob = await ExecutionService.bulkExport(credentials, allResources, true);
-      setLoading(false);
-      setExportPhase('idle');
+      
+      console.log('Instance export blob:', { size: blob.size, type: blob.type });
+      
+      if (blob.size === 0) {
+        throw new Error('Export failed: Received empty file from server');
+      }
       
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = 'jamf_instance_export.zip';
+      a.style.display = 'none';
       document.body.appendChild(a);
+      
+      console.log('Triggering instance download');
       a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
+      
+      setLoading(false);
+      setExportPhase('idle');
     } catch (err) {
       setLoading(false);
       setExportPhase('idle');

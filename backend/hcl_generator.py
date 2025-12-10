@@ -2,6 +2,10 @@
 from typing import Dict, Any, Optional, TYPE_CHECKING
 from collections import defaultdict
 import json
+import os
+
+# Provider version for exports (configurable via environment variable)
+PROVIDER_VERSION = os.getenv('JAMFPRO_PROVIDER_VERSION', '~> 0.19.0')
 
 if TYPE_CHECKING:
     from support_file_handler import SupportFileHandler
@@ -144,6 +148,34 @@ class HCLGenerator:
         self.used_names[resource_type].add(candidate)
         return candidate
     
+    def _escape_hcl_string(self, value: str) -> str:
+        """
+        Escape special characters in a string for use in HCL.
+        
+        Args:
+            value: String to escape
+            
+        Returns:
+            Escaped string safe for HCL
+        """
+        if not isinstance(value, str):
+            return str(value)
+        
+        # Escape backslashes first
+        escaped = value.replace('\\', '\\\\')
+        # Escape double quotes
+        escaped = escaped.replace('"', '\\"')
+        # Escape template interpolation
+        escaped = escaped.replace('$', '\\$')
+        # Escape newlines
+        escaped = escaped.replace('\n', '\\n')
+        # Escape carriage returns
+        escaped = escaped.replace('\r', '\\r')
+        # Escape tabs
+        escaped = escaped.replace('\t', '\\t')
+        
+        return escaped
+    
     def _generate_policy_hcl(self, policy_data: dict, resource_name: Optional[str] = None) -> str:
         """Generate HCL for a Jamf Pro policy."""
         general = policy_data.get('general', {})
@@ -194,50 +226,214 @@ class HCLGenerator:
             
             hcl.append('  }')
         
-        # Packages
-        packages = policy_data.get('package_configuration', {}).get('packages', [])
-        if packages:
-            hcl.append('')
-            for pkg in packages:
-                if isinstance(pkg, dict):
-                    hcl.append('  package {')
-                    if pkg.get('name'):
-                        pkg_name = self._sanitize_name(pkg['name'])
-                        hcl.append(f'    id     = jamfpro_package.{pkg_name}.id')
-                    else:
-                        hcl.append(f'    id     = {pkg.get("id")}')
-                    
-                    hcl.append(f'    action = "{pkg.get("action", "Install")}"')
-                    hcl.append('  }')
-
-        # Scripts
-        scripts = policy_data.get('scripts', [])
-        if scripts:
+        # Generate comprehensive payloads block
+        payload_hcl = self._generate_policy_payloads_hcl(policy_data)
+        if payload_hcl:
             hcl.append('')
             hcl.append('  payloads {')
-            for script in scripts:
-                if isinstance(script, dict):
-                    hcl.append('    scripts {')
-                    if script.get('name'):
-                        script_name = self._sanitize_name(script['name'])
-                        hcl.append(f'      id       = jamfpro_script.{script_name}.id')
-                    else:
-                        hcl.append(f'      id       = {script.get("id")}')
-                        
-                    hcl.append(f'      priority = "{script.get("priority", "After")}"')
-                    
-                    for i in range(4, 12):
-                        param_key = f'parameter{i}'
-                        if param_key in script and script[param_key]:
-                            # Escape quotes in parameter values
-                            param_value = script[param_key].replace('"', '\\"')
-                            hcl.append(f'      {param_key} = "{param_value}"')
-                    
-                    hcl.append('    }')
+            for line in payload_hcl:
+                hcl.append('    ' + line)
             hcl.append('  }')
         
         hcl.append('}')
         return '\n'.join(hcl)
+    
+    def _generate_policy_payloads_hcl(self, policy_data: dict) -> list:
+        """
+        Generate all policy payload blocks.
+        
+        Supports all Jamf policy payload types based on jamfpro provider v0.19.x schema.
+        Returns list of HCL lines (indentation added by caller).
+        """
+        lines = []
+        
+        # 1. Scripts (most common)
+        scripts = policy_data.get('scripts', [])
+        for script in scripts:
+            if isinstance(script, dict) and script.get('id'):
+                lines.append('scripts {')
+                
+                if script.get('name'):
+                    script_name = self._sanitize_name(script['name'])
+                    lines.append(f'  id = jamfpro_script.{script_name}.id')
+                else:
+                    lines.append(f'  id = {script["id"]}')
+                
+                priority = script.get('priority', 'After').upper()
+                lines.append(f'  priority = "{priority}"')
+                
+                # Script parameters 4-11
+                for i in range(4, 12):
+                    param_key = f'parameter{i}'
+                    if param_key in script and script[param_key]:
+                        escaped_param = self._escape_hcl_string(script[param_key])
+                        lines.append(f'  {param_key} = "{escaped_param}"')
+                
+                lines.append('}')
+        
+        # 2. Maintenance
+        maintenance = policy_data.get('maintenance', {})
+        if maintenance and any(maintenance.values()):
+            lines.append('maintenance {')
+            lines.append(f'  recon = {str(maintenance.get("recon", False)).lower()}')
+            lines.append(f'  reset_name = {str(maintenance.get("reset_name", False)).lower()}')
+            lines.append(f'  install_all_cached_packages = {str(maintenance.get("install_all_cached_packages", False)).lower()}')
+            lines.append(f'  heal = {str(maintenance.get("heal", False)).lower()}')
+            lines.append(f'  prebindings = {str(maintenance.get("prebindings", False)).lower()}')
+            lines.append(f'  permissions = {str(maintenance.get("permissions", False)).lower()}')
+            lines.append(f'  byhost = {str(maintenance.get("byhost", False)).lower()}')
+            lines.append(f'  system_cache = {str(maintenance.get("system_cache", False)).lower()}')
+            lines.append(f'  user_cache = {str(maintenance.get("user_cache", False)).lower()}')
+            lines.append(f'  verify = {str(maintenance.get("verify", False)).lower()}')
+            lines.append('}')
+        
+        #  3. Reboot  
+        reboot = policy_data.get('reboot', {})
+        if reboot and any(v for k, v in reboot.items() if k != 'message' or v):
+            lines.append('reboot {')
+            if reboot.get('message'):
+                msg = self._escape_hcl_string(reboot['message'])
+                lines.append(f'  message = "{msg}"')
+            lines.append(f'  specify_startup = "{reboot.get("specify_startup", "Standard Restart")}"')
+            lines.append(f'  startup_disk = "{reboot.get("startup_disk", "Current Startup Disk")}"')
+            lines.append(f'  no_user_logged_in = "{reboot.get("no_user_logged_in", "Do not restart")}"')
+            lines.append(f'  user_logged_in = "{reboot.get("user_logged_in", "Do not restart")}"')
+            lines.append(f'  minutes_until_reboot = {reboot.get("minutes_until_reboot", 5)}')
+            lines.append(f'  start_reboot_timer_immediately = {str(reboot.get("start_reboot_timer_immediately", False)).lower()}')
+            lines.append(f'  file_vault_2_reboot = {str(reboot.get("file_vault_2_reboot", False)).lower()}')
+            lines.append('}')
+        
+        # 4. Files and Processes
+        files_processes = policy_data.get('files_processes', {})
+        if files_processes and any(files_processes.values()):
+            lines.append('files_processes {')
+            if files_processes.get('search_by_path'):
+                lines.append(f'  search_by_path = "{self._escape_hcl_string(files_processes["search_by_path"])}"')
+            if files_processes.get('delete_file') is not None:
+                lines.append(f'  delete_file = {str(files_processes["delete_file"]).lower()}')
+            if files_processes.get('locate_file'):
+                lines.append(f'  locate_file = "{self._escape_hcl_string(files_processes["locate_file"])}"')
+            if files_processes.get('update_locate_database') is not None:
+                lines.append(f'  update_locate_database = {str(files_processes["update_locate_database"]).lower()}')
+            if files_processes.get('spotlight_search'):
+                lines.append(f'  spotlight_search = "{self._escape_hcl_string(files_processes["spotlight_search"])}"')
+            if files_processes.get('search_for_process'):
+                lines.append(f'  search_for_process = "{self._escape_hcl_string(files_processes["search_for_process"])}"')
+            if files_processes.get('kill_process') is not None:
+                lines.append(f'  kill_process = {str(files_processes["kill_process"]).lower()}')
+            if files_processes.get('run_command'):
+                lines.append(f'  run_command = "{self._escape_hcl_string(files_processes["run_command"])}"')
+            lines.append('}')
+        
+        # 5. Printers
+        printers = policy_data.get('printers', [])
+        for printer in printers:
+            if isinstance(printer, dict) and printer.get('id'):
+                lines.append('printers {')
+                lines.append(f'  id = {printer["id"]}')
+                if printer.get('name'):
+                    lines.append(f'  name = "{printer["name"]}"')
+                if printer.get('action'):
+                    lines.append(f'  action = "{printer["action"]}"')
+                if printer.get('make_default') is not None:
+                    lines.append(f'  make_default = {str(printer["make_default"]).lower()}')
+                lines.append('}')
+        
+        # 6. Dock Items
+        dock_items = policy_data.get('dock_items', [])
+        for item in dock_items:
+            if isinstance(item, dict) and item.get('id'):
+                lines.append('dock_items {')
+                lines.append(f'  id = {item["id"]}')
+                if item.get('name'):
+                    lines.append(f'  name = "{item["name"]}"')
+                if item.get('action'):
+                    lines.append(f'  action = "{item["action"]}"')
+                lines.append('}')
+        
+        # 7. Disk Encryption
+        disk_encryption = policy_data.get('disk_encryption', {})
+        if disk_encryption and disk_encryption.get('action'):
+            lines.append('disk_encryption {')
+            lines.append(f'  action = "{disk_encryption["action"]}"')
+            if disk_encryption.get('disk_encryption_configuration_id'):
+                lines.append(f'  disk_encryption_configuration_id = {disk_encryption["disk_encryption_configuration_id"]}')
+            if disk_encryption.get('auth_restart') is not None:
+                lines.append(f'  auth_restart = {str(disk_encryption["auth_restart"]).lower()}')
+            if disk_encryption.get("remediate_key_type"):
+                lines.append(f'  remediate_key_type = "{disk_encryption["remediate_key_type"]}"')
+            if disk_encryption.get('remediate_disk_encryption_configuration_id'):
+                lines.append(f'  remediate_disk_encryption_configuration_id = {disk_encryption["remediate_disk_encryption_configuration_id"]}')
+            lines.append('}')
+        
+        # 8. Account Maintenance (has multiple sub-sections)
+        account_maint = policy_data.get('account_maintenance', {})
+        if account_maint and any(account_maint.values()):
+            lines.append('account_maintenance {')
+            
+            # Local Accounts
+            local_accounts = account_maint.get('accounts', [])
+            if local_accounts:
+                lines.append('  local_accounts {')
+                for account in local_accounts:
+                    if isinstance(account, dict):
+                        lines.append('    account {')
+                        if account.get('action'):
+                            lines.append(f'      action = "{account["action"]}"')
+                        if account.get('username'):
+                            lines.append(f'      username = "{account["username"]}"')
+                        if account.get('realname'):
+                            lines.append(f'      realname = "{self._escape_hcl_string(account["realname"])}"')
+                        if account.get('password'):
+                            lines.append(f'      password = "{account["password"]}"')
+                        if account.get('home'):
+                            lines.append(f'      home = "{account["home"]}"')
+                        if account.get('hint'):
+                            lines.append(f'      hint = "{self._escape_hcl_string(account["hint"])}"')
+                        if account.get('picture'):
+                            lines.append(f'      picture = "{account["picture"]}"')
+                        if account.get('admin') is not None:
+                            lines.append(f'      admin = {str(account["admin"]).lower()}')
+                        if account.get('filevault_enabled') is not None:
+                            lines.append(f'      filevault_enabled = {str(account["filevault_enabled"]).lower()}')
+                        lines.append('    }')
+                lines.append('  }')
+            
+            # Management Account
+            mgmt_account = account_maint.get('management_account', {})
+            if mgmt_account and mgmt_account.get('action'):
+                lines.append('  management_account {')
+                lines.append(f'    action = "{mgmt_account["action"]}"')
+                if mgmt_account.get('managed_password'):
+                    lines.append(f'    managed_password = "{mgmt_account["managed_password"]}"')
+                if mgmt_account.get('managed_password_length'):
+                    lines.append(f'    managed_password_length = {mgmt_account["managed_password_length"]}')
+                lines.append('  }')
+            
+            # Directory Bindings
+            directory_bindings = account_maint.get('directory_bindings', [])
+            if directory_bindings:
+                lines.append('  directory_bindings {')
+                for binding in directory_bindings:
+                    if isinstance(binding, dict) and binding.get('id'):
+                        lines.append('    binding {')
+                        lines.append(f'      id = {binding["id"]}')
+                        lines.append('    }')
+                lines.append('  }')
+            
+            # Open Firmware/EFI Password
+            efi_password = account_maint.get('open_firmware_efi_password', {})
+            if efi_password and (efi_password.get('of_mode') or efi_password.get('of_password')):
+                lines.append('  open_firmware_efi_password {')
+                if efi_password.get('of_mode'):
+                    lines.append(f'    of_mode = "{efi_password["of_mode"]}"')
+                if efi_password.get('of_password'):
+                    lines.append(f'    of_password = "{efi_password["of_password"]}"')
+                lines.append('  }')
+            
+            lines.append('}')
+        
+        return lines
     
     def _generate_script_hcl(self, script_data: dict, resource_name: Optional[str] = None) -> str:
         """Generate HCL for a Jamf Pro script."""
