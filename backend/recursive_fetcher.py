@@ -79,6 +79,16 @@ class RecursiveFetcher:
             return await self.client.get_building_detail(resource_id)
         elif resource_type == "computer_groups" or resource_type == "smart-groups" or resource_type == "static-groups":
             return await self.client.get_computer_group_detail(resource_id)
+        elif resource_type == "mobile-device-groups":
+            return await self.client.get_mobile_device_group_detail(resource_id)
+        elif resource_type == "mobile-device-prestages":
+            return await self.client.get_mobile_device_prestage_detail(resource_id)
+        elif resource_type == "mobile-device-config-profiles":
+            return await self.client.get_mobile_device_configuration_profile_detail(resource_id)
+        elif resource_type == "advanced-mobile-device-searches":
+            return await self.client.get_advanced_mobile_device_search_detail(resource_id)
+        elif resource_type == "mobile-device-extension-attributes":
+            return await self.client.get_mobile_device_extension_attribute_detail(resource_id)
         # Add categories and others if needed
         # Categories often don't have a specific detail endpoint used here, 
         # but we might need list_categories to look up ID? 
