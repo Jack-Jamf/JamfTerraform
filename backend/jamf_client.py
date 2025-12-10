@@ -255,7 +255,7 @@ class JamfClient:
         Get resources by type.
         
         Args:
-            resource_type: One of 'policies', 'smart-groups', 'static-groups', 'config-profiles', 'scripts', 'packages'
+            resource_type: One of 'policies', 'smart-groups', 'static-groups', 'config-profiles', 'scripts', 'packages', 'printers', 'sites', 'mobile-device-groups', 'mobile-device-prestages', 'mobile-device-config-profiles', 'advanced-mobile-device-searches', 'mobile-device-extension-attributes'
             
         Returns:
             List of resource objects
@@ -275,6 +275,13 @@ class JamfClient:
             "advanced-computer-searches": self.list_advanced_computer_searches,
             "departments": self.list_departments,
             "network-segments": self.list_network_segments,
+            "printers": self.list_printers,
+            "sites": self.list_sites,
+            "mobile-device-groups": self.list_mobile_device_groups,
+            "mobile-device-prestages": self.list_mobile_device_prestages,
+            "mobile-device-config-profiles": self.list_mobile_device_configuration_profiles,
+            "advanced-mobile-device-searches": self.list_advanced_mobile_device_searches,
+            "mobile-device-extension-attributes": self.list_mobile_device_extension_attributes,
         }
         
         if resource_type not in resource_methods:
@@ -427,6 +434,146 @@ class JamfClient:
         data = response.json()
         return data.get("building", {})
     
+    async def list_printers(self) -> list:
+        """List all printers."""
+        url = f"{self.base_url}/JSSResource/printers"
+        
+        response = await self._client.get(url, headers=self._get_headers())
+        if response.status_code != 200:
+            raise ValueError(f"Failed to fetch printers: {response.status_code}")
+        data = response.json()
+        return data.get("printers", [])
+    
+    async def get_printer_detail(self, printer_id: int) -> dict:
+        """Fetch detailed printer data."""
+        url = f"{self.base_url}/JSSResource/printers/id/{printer_id}"
+        
+        response = await self._client.get(url, headers=self._get_headers())
+        if response.status_code != 200:
+            raise ValueError(f"Failed to fetch printer {printer_id}: {response.status_code}")
+        data = response.json()
+        return data.get("printer", {})
+    
+    async def list_sites(self) -> list:
+        """List all sites."""
+        url = f"{self.base_url}/JSSResource/sites"
+        
+        response = await self._client.get(url, headers=self._get_headers())
+        if response.status_code != 200:
+            raise ValueError(f"Failed to fetch sites: {response.status_code}")
+        data = response.json()
+        return data.get("sites", [])
+    
+    async def get_site_detail(self, site_id: int) -> dict:
+        """Fetch detailed site data."""
+        url = f"{self.base_url}/JSSResource/sites/id/{site_id}"
+        
+        response = await self._client.get(url, headers=self._get_headers())
+        if response.status_code != 200:
+            raise ValueError(f"Failed to fetch site {site_id}: {response.status_code}")
+        data = response.json()
+        return data.get("site", {})
+    
+    async def list_mobile_device_groups(self) -> list:
+        """List all mobile device groups."""
+        url = f"{self.base_url}/JSSResource/mobiledevicegroups"
+        
+        response = await self._client.get(url, headers=self._get_headers())
+        if response.status_code != 200:
+            raise ValueError(f"Failed to fetch mobile device groups: {response.status_code}")
+        data = response.json()
+        return data.get("mobile_device_groups", [])
+    
+    async def get_mobile_device_group_detail(self, group_id: int) -> dict:
+        """Fetch detailed mobile device group data."""
+        url = f"{self.base_url}/JSSResource/mobiledevicegroups/id/{group_id}"
+        
+        response = await self._client.get(url, headers=self._get_headers())
+        if response.status_code != 200:
+            raise ValueError(f"Failed to fetch mobile device group {group_id}: {response.status_code}")
+        data = response.json()
+        return data.get("mobile_device_group", {})
+    
+    async def list_mobile_device_prestages(self) -> list:
+        """List all mobile device prestage enrollments."""
+        url = f"{self.base_url}/api/v2/mobile-device-prestages"
+        
+        response = await self._client.get(url, headers=self._get_headers())
+        if response.status_code != 200:
+            raise ValueError(f"Failed to fetch mobile device prestages: {response.status_code}")
+        data = response.json()
+        # v2 API returns results array
+        return data.get("results", [])
+    
+    async def get_mobile_device_prestage_detail(self, prestage_id: int) -> dict:
+        """Fetch detailed mobile device prestage data."""
+        url = f"{self.base_url}/api/v2/mobile-device-prestages/{prestage_id}"
+        
+        response = await self._client.get(url, headers=self._get_headers())
+        if response.status_code != 200:
+            raise ValueError(f"Failed to fetch mobile device prestage {prestage_id}: {response.status_code}")
+        return response.json()
+    
+    async def list_mobile_device_configuration_profiles(self) -> list:
+        """List all mobile device configuration profiles."""
+        url = f"{self.base_url}/JSSResource/mobiledeviceconfigurationprofiles"
+        
+        response = await self._client.get(url, headers=self._get_headers())
+        if response.status_code != 200:
+            raise ValueError(f"Failed to fetch mobile device config profiles: {response.status_code}")
+        data = response.json()
+        return data.get("configuration_profiles", [])
+    
+    async def get_mobile_device_configuration_profile_detail(self, profile_id: int) -> dict:
+        """Fetch detailed mobile device configuration profile data."""
+        url = f"{self.base_url}/JSSResource/mobiledeviceconfigurationprofiles/id/{profile_id}"
+        
+        response = await self._client.get(url, headers=self._get_headers())
+        if response.status_code != 200:
+            raise ValueError(f"Failed to fetch mobile device config profile {profile_id}: {response.status_code}")
+        data = response.json()
+        return data.get("configuration_profile", {})
+    
+    async def list_advanced_mobile_device_searches(self) -> list:
+        """List all advanced mobile device searches."""
+        url = f"{self.base_url}/JSSResource/advancedmobiledevicesearches"
+        
+        response = await self._client.get(url, headers=self._get_headers())
+        if response.status_code != 200:
+            raise ValueError(f"Failed to fetch advanced mobile device searches: {response.status_code}")
+        data = response.json()
+        return data.get("advanced_mobile_device_searches", [])
+    
+    async def get_advanced_mobile_device_search_detail(self, search_id: int) -> dict:
+        """Fetch detailed advanced mobile device search data."""
+        url = f"{self.base_url}/JSSResource/advancedmobiledevicesearches/id/{search_id}"
+        
+        response = await self._client.get(url, headers=self._get_headers())
+        if response.status_code != 200:
+            raise ValueError(f"Failed to fetch advanced mobile device search {search_id}: {response.status_code}")
+        data = response.json()
+        return data.get("advanced_mobile_device_search", {})
+    
+    async def list_mobile_device_extension_attributes(self) -> list:
+        """List all mobile device extension attributes."""
+        url = f"{self.base_url}/JSSResource/mobiledeviceextensionattributes"
+        
+        response = await self._client.get(url, headers=self._get_headers())
+        if response.status_code != 200:
+            raise ValueError(f"Failed to fetch mobile device extension attributes: {response.status_code}")
+        data = response.json()
+        return data.get("mobile_device_extension_attributes", [])
+    
+    async def get_mobile_device_extension_attribute_detail(self, attr_id: int) -> dict:
+        """Fetch detailed mobile device extension attribute data."""
+        url = f"{self.base_url}/JSSResource/mobiledeviceextensionattributes/id/{attr_id}"
+        
+        response = await self._client.get(url, headers=self._get_headers())
+        if response.status_code != 200:
+            raise ValueError(f"Failed to fetch mobile device extension attribute {attr_id}: {response.status_code}")
+        data = response.json()
+        return data.get("mobile_device_extension_attribute", {})
+    
     async def get_all_instance_resources(self) -> dict:
         """
         Fetch all resources from the Jamf Pro instance.
@@ -451,6 +598,49 @@ class JamfClient:
         resources["network-segments"] = await self.list_network_segments()
         resources["advanced-computer-searches"] = await self.list_advanced_computer_searches()
         resources["extension-attributes"] = await self.list_computer_extension_attributes()
+        resources["printers"] = await self.list_printers()
+        resources["sites"] = await self.list_sites()
+        
+        # Mobile Device Resources (with error handling)
+        try:
+            print("[DEBUG] Fetching mobile device groups...")
+            resources["mobile-device-groups"] = await self.list_mobile_device_groups()
+            print(f"[DEBUG] Found {len(resources['mobile-device-groups'])} mobile device groups")
+        except Exception as e:
+            print(f"[ERROR] Failed to fetch mobile device groups: {e}")
+            resources["mobile-device-groups"] = []
+        
+        try:
+            print("[DEBUG] Fetching mobile device prestages...")
+            resources["mobile-device-prestages"] = await self.list_mobile_device_prestages()
+            print(f"[DEBUG] Found {len(resources['mobile-device-prestages'])} mobile device prestages")
+        except Exception as e:
+            print(f"[ERROR] Failed to fetch mobile device prestages: {e}")
+            resources["mobile-device-prestages"] = []
+        
+        try:
+            print("[DEBUG] Fetching mobile device config profiles...")
+            resources["mobile-device-config-profiles"] = await self.list_mobile_device_configuration_profiles()
+            print(f"[DEBUG] Found {len(resources['mobile-device-config-profiles'])} mobile device config profiles")
+        except Exception as e:
+            print(f"[ERROR] Failed to fetch mobile device config profiles: {e}")
+            resources["mobile-device-config-profiles"] = []
+        
+        try:
+            print("[DEBUG] Fetching advanced mobile device searches...")
+            resources["advanced-mobile-device-searches"] = await self.list_advanced_mobile_device_searches()
+            print(f"[DEBUG] Found {len(resources['advanced-mobile-device-searches'])} advanced mobile device searches")
+        except Exception as e:
+            print(f"[ERROR] Failed to fetch advanced mobile device searches: {e}")
+            resources["advanced-mobile-device-searches"] = []
+        
+        try:
+            print("[DEBUG] Fetching mobile device extension attributes...")
+            resources["mobile-device-extension-attributes"] = await self.list_mobile_device_extension_attributes()
+            print(f"[DEBUG] Found {len(resources['mobile-device-extension-attributes'])} mobile device extension attributes")
+        except Exception as e:
+            print(f"[ERROR] Failed to fetch mobile device extension attributes: {e}")
+            resources["mobile-device-extension-attributes"] = []
         
         # Split computer groups into smart and static
         all_groups = await self.list_computer_groups()

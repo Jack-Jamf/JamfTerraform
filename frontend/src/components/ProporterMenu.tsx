@@ -27,6 +27,13 @@ const RESOURCE_TYPES: ResourceType[] = [
   { id: 'network-segments', name: 'Network Segments', icon: '🌐', description: 'Import network segments' },
   { id: 'advanced-computer-searches', name: 'Adv. Searches', icon: '🔍', description: 'Import advanced computer searches' },
   { id: 'extension-attributes', name: 'Extension Attributes', icon: '🏷️', description: 'Import computer extension attributes' },
+  { id: 'printers', name: 'Printers', icon: '🖨️', description: 'Import printer configurations' },
+  { id: 'sites', name: 'Sites', icon: '🏛️', description: 'Import site definitions (multi-site instances)' },
+  { id: 'mobile-device-groups', name: 'Mobile Groups', icon: '📱', description: 'Import mobile device groups (iOS/iPadOS)' },
+  { id: 'mobile-device-prestages', name: 'Mobile Prestages', icon: '🔧', description: 'Import mobile device prestage enrollments' },
+  { id: 'mobile-device-config-profiles', name: 'Mobile Profiles', icon: '📲', description: 'Import mobile device configuration profiles' },
+  { id: 'advanced-mobile-device-searches', name: 'Mobile Searches', icon: '🔎', description: 'Import advanced mobile device searches' },
+  { id: 'mobile-device-extension-attributes', name: 'Mobile EAs', icon: '📌', description: 'Import mobile device extension attributes' },
 ];
 
 interface JamfResource {

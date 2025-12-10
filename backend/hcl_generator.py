@@ -52,6 +52,13 @@ class HCLGenerator:
             'advanced-computer-searches': self._generate_advanced_computer_search_hcl,
             'departments': self._generate_department_hcl,
             'network-segments': self._generate_network_segment_hcl,
+            'printers': self._generate_printer_hcl,
+            'sites': self._generate_site_hcl,
+            'mobile-device-groups': self._generate_mobile_device_group_hcl,
+            'mobile-device-prestages': self._generate_mobile_device_prestage_hcl,
+            'mobile-device-config-profiles': self._generate_mobile_device_configuration_profile_hcl,
+            'advanced-mobile-device-searches': self._generate_advanced_mobile_device_search_hcl,
+            'mobile-device-extension-attributes': self._generate_mobile_device_extension_attribute_hcl,
         }
     
     def generate_resource_hcl(self, resource_type: str, resource_data: dict, resource_name: Optional[str] = None) -> str:
@@ -906,5 +913,252 @@ class HCLGenerator:
         if segment_data.get("url"):
             hcl.append(f'  url = "{self._escape_hcl_string(segment_data.get("url", ""))}"')
             
+        hcl.append('}')
+        return '\n'.join(hcl)
+
+    def _generate_printer_hcl(self, printer_data: dict, resource_name: Optional[str] = None) -> str:
+        """Generate HCL for a Jamf Pro Printer."""
+        name = printer_data.get('name', 'Unnamed Printer')
+        tf_name = resource_name or self._get_unique_tf_name(name, 'jamfpro_printer')
+        
+        hcl = [f'resource "jamfpro_printer" "{tf_name}" {{']
+        hcl.append(f'  name = "{self._escape_hcl_string(name)}"')
+        
+        # Optional fields based on Terraform provider schema
+        if printer_data.get('category'):
+            cat_name = self._sanitize_name(printer_data['category'])
+            hcl.append(f'  category_name = jamfpro_category.{cat_name}.name')
+        
+        if printer_data.get('cups_name'):
+            hcl.append(f'  cups_name = "{self._escape_hcl_string(printer_data["cups_name"])}"')
+        
+        if printer_data.get('location'):
+            hcl.append(f'  location = "{self._escape_hcl_string(printer_data["location"])}"')
+        
+        if printer_data.get('model'):
+            hcl.append(f'  model = "{self._escape_hcl_string(printer_data["model"])}"')
+        
+        if printer_data.get('info'):
+            hcl.append(f'  info = "{self._escape_hcl_string(printer_data["info"])}"')
+        
+        if printer_data.get('notes'):
+            hcl.append(f'  notes = "{self._escape_hcl_string(printer_data["notes"])}"')
+        
+        if printer_data.get('uri'):
+            hcl.append(f'  uri = "{self._escape_hcl_string(printer_data["uri"])}"')
+        
+        if printer_data.get('ppd'):
+            hcl.append(f'  ppd = "{self._escape_hcl_string(printer_data["ppd"])}"')
+        
+        if printer_data.get('ppd_path'):
+            hcl.append(f'  ppd_path = "{self._escape_hcl_string(printer_data["ppd_path"])}"')
+        
+        if printer_data.get('make_default') is not None:
+            hcl.append(f'  make_default = {str(printer_data["make_default"]).lower()}')
+        
+        if printer_data.get('use_generic') is not None:
+            hcl.append(f'  use_generic = {str(printer_data["use_generic"]).lower()}')
+        
+        hcl.append('}')
+        return '\n'.join(hcl)
+
+    def _generate_site_hcl(self, site_data: dict, resource_name: Optional[str] = None) -> str:
+        """Generate HCL for a Jamf Pro Site."""
+        name = site_data.get('name', 'Unnamed Site')
+        tf_name = resource_name or self._get_unique_tf_name(name, 'jamfpro_site')
+        
+        hcl = [f'resource "jamfpro_site" "{tf_name}" {{']
+        hcl.append(f'  name = "{self._escape_hcl_string(name)}"')
+        hcl.append('}')
+        return '\n'.join(hcl)
+
+    def _generate_mobile_device_group_hcl(self, group_data: dict, resource_name: Optional[str] = None) -> str:
+        """Generate HCL for a Jamf Pro Static Mobile Device Group."""
+        name = group_data.get('name', 'Unnamed Mobile Group')
+        tf_name = resource_name or self._get_unique_tf_name(name, 'jamfpro_static_mobile_device_group')
+        
+        hcl = [f'resource "jamfpro_static_mobile_device_group" "{tf_name}" {{']
+        hcl.append(f'  name = "{self._escape_hcl_string(name)}"')
+        
+        # Required: mobile_device_ids (Set of Number)
+        mobile_devices = group_data.get('mobile_devices', [])
+        if mobile_devices:
+            device_ids = [str(d.get('id'))  for d in mobile_devices if isinstance(d, dict) and 'id' in d]
+            if device_ids:
+                hcl.append(f'  mobile_device_ids = [{", ".join(device_ids)}]')
+        else:
+            # Empty list if no devices
+            hcl.append('  mobile_device_ids = []')
+        
+        # Optional: site_id
+        if group_data.get('site'):
+            site = group_data['site']
+            if isinstance(site, dict) and site.get('id', -1) not in [-1, 0]:
+                hcl.append(f'  site_id = "{site["id"]}"')
+        
+        hcl.append('}')
+        return '\n'.join(hcl)
+
+    def _generate_mobile_device_prestage_hcl(self, prestage_data: dict, resource_name: Optional[str] = None) -> str:
+        """Generate HCL for a Jamf Pro Mobile Device Prestage Enrollment."""
+        display_name = prestage_data.get('displayName', prestage_data.get('display_name', 'Unnamed Prestage'))
+        tf_name = resource_name or self._get_unique_tf_name(display_name, 'jamfpro_mobile_device_prestage_enrollment')
+        
+        hcl = [f'resource "jamfpro_mobile_device_prestage_enrollment" "{tf_name}" {{']
+        
+        # Required fields
+        hcl.append(f'  display_name = "{self._escape_hcl_string(display_name)}"')
+        hcl.append(f'  mandatory = {str(prestage_data.get("mandatory", True)).lower()}')
+        hcl.append(f'  mdm_removable = {str(prestage_data.get("mdmRemovable", prestage_data.get("mdm_removable", False))).lower()}')
+        hcl.append(f'  support_phone_number = "{prestage_data.get("supportPhoneNumber", prestage_data.get("support_phone_number", ""))}"')
+        hcl.append(f'  support_email_address = "{prestage_data.get("supportEmailAddress", prestage_data.get("support_email_address", ""))}"')
+        hcl.append(f'  department = "{self._escape_hcl_string(prestage_data.get("department", ""))}"')
+        hcl.append(f'  default_prestage = {str(prestage_data.get("defaultPrestage", prestage_data.get("default_prestage", False))).lower()}')
+        hcl.append(f'  device_enrollment_program_instance_id = "{prestage_data.get("deviceEnrollmentProgramInstanceId", prestage_data.get("device_enrollment_program_instance_id", "1"))}"')
+        
+        # Boolean fields
+        hcl.append(f'  allow_pairing = {str(prestage_data.get("allowPairing", prestage_data.get("allow_pairing", True))).lower()}')
+        hcl.append(f'  auto_advance_setup = {str(prestage_data.get("autoAdvanceSetup", prestage_data.get("auto_advance_setup", False))).lower()}')
+        hcl.append(f'  configure_device_before_setup_assistant = {str(prestage_data.get("configureDeviceBeforeSetupAssistant", prestage_data.get("configure_device_before_setup_assistant", False))).lower()}')
+        
+        # Authentication prompt
+        auth_prompt = prestage_data.get('authenticationPrompt', prestage_data.get('authentication_prompt', ''))
+        if auth_prompt:
+            hcl.append(f'  authentication_prompt = "{self._escape_hcl_string(auth_prompt)}"')
+        
+        hcl.append('}')
+        return '\n'.join(hcl)
+
+    def _generate_mobile_device_configuration_profile_hcl(self, profile_data: dict, resource_name: Optional[str] = None) -> str:
+        """Generate HCL for a mobile device configuration profile (mirrors macOS config profile)."""
+        general = profile_data.get('general', {})
+        name = general.get('name', 'Unnamed Mobile Profile')
+        tf_name = resource_name or self._get_unique_tf_name(name, 'jamfpro_mobile_device_configuration_profile_plist')
+        profile_id = general.get('id') or profile_data.get('id')
+        
+        hcl = [f'resource "jamfpro_mobile_device_configuration_profile_plist" "{tf_name}" {{']
+        hcl.append(f'  name = "{name}"')
+        
+        # Required fields
+        description = general.get('description', '')
+        if description:
+            desc_escaped = description.replace('"', '\\"').replace('\n', '\\n')
+            hcl.append(f'  description = "{desc_escaped}"')
+        else:
+            hcl.append(f'  description = "Exported from Jamf Pro"')
+        
+        # Level (User or System)
+        level = general.get('level', 'System')
+        if level.lower() in ['device', 'system']:
+            level = 'System'
+        elif level.lower() == 'user':
+            level = 'User'
+        hcl.append(f'  level = "{level}"')
+        
+        # Optional settings
+        if general.get('redeploy_on_update'):
+            hcl.append(f'  redeploy_on_update = "{general.get("redeploy_on_update", "Newly Assigned")}"')
+        if general.get('user_removable') is not None:
+            hcl.append(f'  user_removable = {str(general.get("user_removable", False)).lower()}')
+        
+        # Category reference
+        category = general.get('category', {})
+        if isinstance(category, dict) and category.get('id', -1) not in [-1, 0]:
+            cat_name = self._sanitize_name(category.get('name', ''))
+            hcl.append(f'  category_id = jamfpro_category.{cat_name}.id')
+        
+        # Payloads - check for file reference from support_file_handler
+        file_ref = None
+        if self.support_file_handler and profile_id:
+            file_ref = self.support_file_handler.get_terraform_file_reference('mobile-device-config-profiles', profile_id)
+        
+        if file_ref:
+            hcl.append(f'  payloads = {file_ref}')
+        elif 'general' in profile_data and 'payloads' in profile_data['general']:
+            # Fallback: inline heredoc
+            hcl.append('  payloads = <<-EOF')
+            payload_lines = profile_data['general']['payloads'].splitlines()
+            for line in payload_lines:
+                hcl.append(f'    {line}')
+            hcl.append('  EOF')
+        else:
+            hcl.append('  # Note: payloads not found or require manual configuration')
+            hcl.append('  payloads = ""')
+        
+        # Scope block (simplified, add if present)
+        scope = profile_data.get('scope', {})
+        if scope:
+            hcl.append('')
+            hcl.append('  scope {')
+            hcl.append(f'    all_mobile_devices = {str(scope.get("all_mobile_devices", False)).lower()}')
+            hcl.append('  }')
+        
+        hcl.append('}')
+        return '\n'.join(hcl)
+
+    def _generate_advanced_mobile_device_search_hcl(self, search_data: dict, resource_name: Optional[str] = None) -> str:
+        """Generate HCL for an advanced mobile device search (mirrors computer search)."""
+        name = search_data.get('name', 'Unnamed Mobile Search')
+        tf_name = resource_name or self._get_unique_tf_name(name, 'jamfpro_advanced_mobile_device_search')
+        
+        hcl = [f'resource "jamfpro_advanced_mobile_device_search" "{tf_name}" {{']
+        hcl.append(f'  name = "{self._escape_hcl_string(name)}"')
+        
+        # Add view_as and sort fields if present
+        if search_data.get('view_as'):
+            hcl.append(f'  view_as = "{search_data["view_as"]}"')
+        if search_data.get('sort1'):
+            hcl.append(f'  sort1 = "{search_data["sort1"]}"')
+        if search_data.get('sort2'):
+            hcl.append(f'  sort2 = "{search_data["sort2"]}"')
+        if search_data.get('sort3'):
+            hcl.append(f'  sort3 = "{search_data["sort3"]}"')
+        
+        # Site
+        if search_data.get('site'):
+            site = search_data['site']
+            if isinstance(site, dict) and site.get('id', -1) not in [-1, 0]:
+                hcl.append(f'  site_id = "{site["id"]}"')
+        
+        hcl.append('}')
+        return '\n'.join(hcl)
+
+    def _generate_mobile_device_extension_attribute_hcl(self, ea_data: dict, resource_name: Optional[str] = None) -> str:
+        """Generate HCL for a mobile device extension attribute (mirrors computer EA)."""
+        name = ea_data.get('name', 'Unnamed Mobile EA')
+        tf_name = resource_name or self._get_unique_tf_name(name, 'jamfpro_mobile_device_extension_attribute')
+        
+        hcl = [f'resource "jamfpro_mobile_device_extension_attribute" "{tf_name}" {{']
+        hcl.append(f'  name = "{self._escape_hcl_string(name)}"')
+        
+        # Input type
+        input_type_data = ea_data.get('input_type', {})
+        input_type = input_type_data.get('type', 'Text Field')
+        hcl.append(f'  input_type = "{self._escape_hcl_string(input_type)}"')
+        
+        # Optional fields
+        if ea_data.get('description'):
+            hcl.append(f'  description = "{self._escape_hcl_string(ea_data["description"])}"')
+        
+        if ea_data.get('data_type'):
+            hcl.append(f'  data_type = "{ea_data["data_type"]}"')
+        
+        if ea_data.get('inventory_display'):
+            hcl.append(f'  inventory_display = "{ea_data["inventory_display"]}"')
+        
+        # Input type specific fields (Script or Pop-up Menu)
+        if input_type in ['script', 'Script']:
+            script_contents = input_type_data.get('script', '')
+            if script_contents:
+                escaped_script = self._escape_hcl_string(script_contents)
+                hcl.append(f'  script_contents = "{escaped_script}"')
+        
+        elif input_type in ['Pop-up Menu', 'POPUP']:
+            choices = input_type_data.get('popup_choices', [])
+            if choices:
+                escaped_choices = [self._escape_hcl_string(str(c)) for c in choices]
+                choices_str = ', '.join([f'"{c}"' for c in escaped_choices])
+                hcl.append(f'  popup_menu_choices = [{choices_str}]')
+        
         hcl.append('}')
         return '\n'.join(hcl)
