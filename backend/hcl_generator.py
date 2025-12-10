@@ -1143,36 +1143,59 @@ class HCLGenerator:
         return '\n'.join(hcl)
 
     def _generate_mobile_device_extension_attribute_hcl(self, ea_data: dict, resource_name: Optional[str] = None) -> str:
-        """Generate HCL for a mobile device extension attribute (mirrors computer EA)."""
+        """Generate HCL for a mobile device extension attribute."""
         name = ea_data.get('name', 'Unnamed Mobile EA')
         tf_name = resource_name or self._get_unique_tf_name(name, 'jamfpro_mobile_device_extension_attribute')
         
         hcl = [f'resource "jamfpro_mobile_device_extension_attribute" "{tf_name}" {{']
         hcl.append(f'  name = "{self._escape_hcl_string(name)}"')
         
-        # Input type
+        # Input type - MUST be a block in provider v0.19
         input_type_data = ea_data.get('input_type', {})
-        input_type = input_type_data.get('type', 'Text Field')
-        hcl.append(f'  input_type = "{self._escape_hcl_string(input_type)}"')
+        input_type_raw = input_type_data.get('type', 'Text Field')
         
-        # Optional fields
+        # Convert to provider-expected enum format
+        input_type_map = {
+            'Text Field': 'TEXT',
+            'TEXT': 'TEXT',
+            'Pop-up Menu': 'POPUP',
+            'POPUP': 'POPUP',
+            'script': 'SCRIPT',
+            'Script': 'SCRIPT',
+            'SCRIPT': 'SCRIPT',
+            'LDAP Attribute Mapping': 'LDAP_ATTRIBUTE',
+            'Directory Service Attribute Mapping': 'LDAP_ATTRIBUTE',
+            'LDAP_ATTRIBUTE': 'LDAP_ATTRIBUTE'
+        }
+        input_type = input_type_map.get(input_type_raw, 'TEXT')
+        
+        # Generate input_type block
+        hcl.append('  input_type {')
+        hcl.append(f'    type = "{input_type}"')
+        hcl.append('  }')
+        
+        # Optional description
         if ea_data.get('description'):
             hcl.append(f'  description = "{self._escape_hcl_string(ea_data["description"])}"')
         
+        # Data type with uppercase conversion
         if ea_data.get('data_type'):
-            hcl.append(f'  data_type = "{ea_data["data_type"]}"')
+            data_type_map = {
+                'String': 'STRING',
+                'INTEGER': 'INTEGER',
+                'Integer': 'INTEGER',
+                'Date': 'DATE',
+                'DATE': 'DATE',
+                'STRING': 'STRING'
+            }
+            data_type = data_type_map.get(ea_data['data_type'], ea_data['data_type'].upper())
+            hcl.append(f'  data_type = "{data_type}"')
         
-        if ea_data.get('inventory_display'):
-            hcl.append(f'  inventory_display = "{ea_data["inventory_display"]}"')
+        # NOTE: inventory_display is not supported in current provider version
+        # Removed to prevent validation errors
         
-        # Input type specific fields (Script or Pop-up Menu)
-        if input_type in ['script', 'Script']:
-            script_contents = input_type_data.get('script', '')
-            if script_contents:
-                escaped_script = self._escape_hcl_string(script_contents)
-                hcl.append(f'  script_contents = "{escaped_script}"')
-        
-        elif input_type in ['Pop-up Menu', 'POPUP']:
+        # Input type specific fields
+        if input_type == 'POPUP':
             choices = input_type_data.get('popup_choices', [])
             if choices:
                 escaped_choices = [self._escape_hcl_string(str(c)) for c in choices]
@@ -1181,3 +1204,4 @@ class HCLGenerator:
         
         hcl.append('}')
         return '\n'.join(hcl)
+
