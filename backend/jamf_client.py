@@ -22,14 +22,22 @@ class JamfClient:
         self._token: Optional[str] = None
         
         # Create persistent HTTP client with connection pooling (OPTIMIZATION: 20-30% speedup)
-        self._client = httpx.AsyncClient(
-            verify=False,
-            timeout=30.0,
-            limits=httpx.Limits(
-                max_connections=50,  # Allow up to 50 concurrent connections
-                max_keepalive_connections=20  # Keep 20 connections alive for reuse
+        # Use Limits if available (httpx >= 0.23), otherwise use defaults
+        try:
+            self._client = httpx.AsyncClient(
+                verify=False,
+                timeout=30.0,
+                limits=httpx.Limits(
+                    max_connections=50,  # Allow up to 50 concurrent connections
+                    max_keepalive_connections=20  # Keep 20 connections alive for reuse
+                )
             )
-        )
+        except (AttributeError, TypeError):
+            # Fallback for older httpx versions without Limits
+            self._client = httpx.AsyncClient(
+                verify=False,
+                timeout=30.0
+            )
     
     async def get_auth_token(self) -> str:
         """
