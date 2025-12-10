@@ -446,6 +446,12 @@ class JamfClient:
         resources["policies"] = await self.list_policies()
         resources["config-profiles"] = await self.list_configuration_profiles()
         
+        # New Resources (Proporter Update)
+        resources["departments"] = await self.list_departments()
+        resources["network-segments"] = await self.list_network_segments()
+        resources["advanced-computer-searches"] = await self.list_advanced_computer_searches()
+        resources["extension-attributes"] = await self.list_computer_extension_attributes()
+        
         # Split computer groups into smart and static
         all_groups = await self.list_computer_groups()
         smart_groups = []
@@ -465,6 +471,7 @@ class JamfClient:
                 smart_groups.append(group)
         
         resources["smart-groups"] = smart_groups
-        resources["static-groups"] = static_groups
+        # Static groups excluded from summary as per requirement
+        # resources["static-groups"] = static_groups 
         
         return resources

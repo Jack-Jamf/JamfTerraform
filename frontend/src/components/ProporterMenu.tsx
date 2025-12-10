@@ -19,11 +19,14 @@ interface ResourceType {
 const RESOURCE_TYPES: ResourceType[] = [
   { id: 'policies', name: 'Policies', icon: '📋', description: 'Import Jamf Pro policies' },
   { id: 'smart-groups', name: 'Smart Groups', icon: '👥', description: 'Import computer/mobile smart groups' },
-  { id: 'static-groups', name: 'Static Groups', icon: '📌', description: 'Import computer/mobile static groups' },
   { id: 'config-profiles', name: 'Configuration Profiles', icon: '⚙️', description: 'Import macOS/iOS configuration profiles' },
   { id: 'scripts', name: 'Scripts', icon: '📜', description: 'Import scripts from Jamf Pro' },
   { id: 'packages', name: 'Packages', icon: '📦', description: 'Import package metadata (files must be added manually)' },
   { id: 'jamf-app-catalog', name: 'Jamf App Catalog', icon: '🍎', description: 'Import Jamf App Catalog installers' },
+  { id: 'departments', name: 'Departments', icon: '🏢', description: 'Import organizational departments' },
+  { id: 'network-segments', name: 'Network Segments', icon: '🌐', description: 'Import network segments' },
+  { id: 'advanced-computer-searches', name: 'Adv. Searches', icon: '🔍', description: 'Import advanced computer searches' },
+  { id: 'extension-attributes', name: 'Extension Attributes', icon: '🏷️', description: 'Import computer extension attributes' },
 ];
 
 interface JamfResource {
