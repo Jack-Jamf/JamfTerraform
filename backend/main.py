@@ -432,7 +432,7 @@ async def bulk_export_resources(request: BulkExportRequest):
 
         # Computer groups (smart and static)
         print(f"[BULK EXPORT] Fetching computer groups...")
-        all_computer_groups = await client.get_all_computer_groups()
+        all_computer_groups = await client.list_computer_groups()
         
         # Filter out static groups (not supported by terraform-provider-jamfpro)
         static_groups = [g for g in all_computer_groups if not g.get('is_smart', False)]
