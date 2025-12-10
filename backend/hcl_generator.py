@@ -305,18 +305,41 @@ class HCLGenerator:
         
         # Input type determines structure
         input_type_data = ea_data.get('input_type', {})
-        input_type = input_type_data.get('type', 'Text Field')
-        hcl.append(f'  input_type  = "{self._escape_hcl_string(input_type)}"')
+        input_type_raw = input_type_data.get('type', 'Text Field')
+        # Convert to provider-expected enum format (uppercase with underscores)
+        input_type_map = {
+            'script': 'SCRIPT',
+            'Script': 'SCRIPT',
+            'Text Field': 'TEXT',
+            'TEXT': 'TEXT',
+            'Pop-up Menu': 'POPUP',
+            'POPUP': 'POPUP',
+            'LDAP Attribute Mapping': 'DIRECTORY_SERVICE_ATTRIBUTE_MAPPING',
+            'Directory Service Attribute Mapping': 'DIRECTORY_SERVICE_ATTRIBUTE_MAPPING',
+            'DIRECTORY_SERVICE_ATTRIBUTE_MAPPING': 'DIRECTORY_SERVICE_ATTRIBUTE_MAPPING'
+        }
+        input_type = input_type_map.get(input_type_raw, input_type_raw)
+        hcl.append(f'  input_type  = "{input_type}"')
         
         # Optional fields
         if ea_data.get('description'):
             hcl.append(f'  description = "{self._escape_hcl_string(ea_data["description"])}"')
         
         if ea_data.get('data_type'):
-            hcl.append(f'  data_type   = "{ea_data["data_type"]}"')
+            # Convert data_type to uppercase enum format
+            data_type_map = {
+                'String': 'STRING',
+                'INTEGER': 'INTEGER',
+                'Integer': 'INTEGER',
+                'Date': 'DATE',
+                'DATE': 'DATE',
+                'STRING': 'STRING'
+            }
+            data_type = data_type_map.get(ea_data['data_type'], ea_data['data_type'].upper())
+            hcl.append(f'  data_type   = "{data_type}"')
         
-        if ea_data.get('inventory_display'):
-            hcl.append(f'  inventory_display = "{ea_data["inventory_display"]}"')
+        # NOTE: inventory_display is not supported by the current provider version
+        # This attribute is managed through the Jamf Pro console
         
         # Input type specific fields
         if input_type in ['script', 'Script']:
@@ -981,15 +1004,10 @@ class HCLGenerator:
         hcl = [f'resource "jamfpro_static_mobile_device_group" "{tf_name}" {{']
         hcl.append(f'  name = "{self._escape_hcl_string(name)}"')
         
-        # Required: mobile_device_ids (Set of Number)
-        mobile_devices = group_data.get('mobile_devices', [])
-        if mobile_devices:
-            device_ids = [str(d.get('id'))  for d in mobile_devices if isinstance(d, dict) and 'id' in d]
-            if device_ids:
-                hcl.append(f'  mobile_device_ids = [{", ".join(device_ids)}]')
-        else:
-            # Empty list if no devices
-            hcl.append('  mobile_device_ids = []')
+        # NOTE: mobile_device_ids is not supported by the provider yet
+        # Device membership is managed via the Jamf Pro console or API directly
+        # The provider currently only supports creating empty groups that can be
+        # populated through other means (scripts, API calls, or Jamf Pro UI)
         
         # Optional: site_id
         if group_data.get('site'):
