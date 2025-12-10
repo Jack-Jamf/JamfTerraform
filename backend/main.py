@@ -530,16 +530,10 @@ async def bulk_export_resources(request: BulkExportRequest):
         except Exception as e:
             print(f"[ERROR] Failed to list mobile device prestages: {e}")
             md_prestages = []
-        async def fetch_md_prestage_detail(p):
-            try:
-                return await client.get_mobile_device_prestage_detail(p['id'])
-            except Exception as e:
-                print(f"Error fetching mobile device prestage {p['id']}: {e}")
-                return None
-        md_prestage_tasks = [fetch_md_prestage_detail(p) for p in md_prestages]
-        md_prestage_details = await asyncio.gather(*md_prestage_tasks)
-        resources_by_type['mobile-device-prestages'] = [p for p in md_prestage_details if p]
-        print(f"[BULK EXPORT] Fetched {len(resources_by_type['mobile-device-prestages'])} mobile device prestages")
+        
+        # Mobile device prestages NOT SUPPORTED by terraform provider v0.19
+        # Keeping API methods for future use but excluding from bulk export
+        print(f"[BULK EXPORT] Skipping mobile device prestages (not supported by provider)")
 
         # Mobile Device Config Profiles
         print(f"[BULK EXPORT] Fetching mobile device config profiles...")
@@ -601,7 +595,7 @@ async def bulk_export_resources(request: BulkExportRequest):
             if orig_type in ['smart-groups', 'static-groups', 'computer_groups', 
                            'extension-attributes', 'advanced-computer-searches', 
                            'departments', 'network-segments',
-                           'mobile-device-groups', 'mobile-device-prestages', 'mobile-device-config-profiles',
+                           'mobile-device-groups', 'mobile-device-config-profiles',
                            'advanced-mobile-device-searches', 'mobile-device-extension-attributes']:
                 continue
             resources_by_type[orig_type].append(r_data)

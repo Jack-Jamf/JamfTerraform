@@ -29,11 +29,10 @@ const RESOURCE_TYPES: ResourceType[] = [
   { id: 'extension-attributes', name: 'Extension Attributes', icon: '🏷️', description: 'Import computer extension attributes' },
   { id: 'printers', name: 'Printers', icon: '🖨️', description: 'Import printer configurations' },
   { id: 'sites', name: 'Sites', icon: '🏛️', description: 'Import site definitions (multi-site instances)' },
-  { id: 'mobile-device-groups', name: 'Mobile Groups', icon: '📱', description: 'Import mobile device groups (iOS/iPadOS)' },
-  { id: 'mobile-device-prestages', name: 'Mobile Prestages', icon: '🔧', description: 'Import mobile device prestage enrollments' },
-  { id: 'mobile-device-config-profiles', name: 'Mobile Profiles', icon: '📲', description: 'Import mobile device configuration profiles' },
-  { id: 'advanced-mobile-device-searches', name: 'Mobile Searches', icon: '🔎', description: 'Import advanced mobile device searches' },
-  { id: 'mobile-device-extension-attributes', name: 'Mobile EAs', icon: '📌', description: 'Import mobile device extension attributes' },
+  { id: 'mobile-device-groups', name: 'Mobile Groups', icon: '📱', description: 'Import mobile device groups (smart and static)' },
+  { id: 'mobile-device-config-profiles', name: 'Mobile Config Profiles', icon: '⚙️', description: 'Import mobile device configuration profiles' },
+  { id: 'advanced-mobile-device-searches', name: 'Mobile Advanced Searches', icon: '🔍', description: 'Import advanced mobile device searches' },
+  { id: 'mobile-device-extension-attributes', name: 'Mobile Extension Attributes', icon: '🏷️', description: 'Import mobile device extension attributes' },
 ];
 
 interface JamfResource {

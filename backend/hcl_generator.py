@@ -1066,12 +1066,12 @@ class HCLGenerator:
         else:
             hcl.append(f'  description = "Exported from Jamf Pro"')
         
-        # Level (User or System)
+        # Level (Device Level or User Level)
         level = general.get('level', 'System')
         if level.lower() in ['device', 'system']:
-            level = 'System'
+            level = 'Device Level'  # Provider expects "Device Level", not "System"
         elif level.lower() == 'user':
-            level = 'User'
+            level = 'User Level'    # Provider expects "User Level", not "User"
         hcl.append(f'  level = "{level}"')
         
         # Optional settings
